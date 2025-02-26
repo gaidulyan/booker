@@ -602,14 +602,10 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                     
                     // Находим все параграфы
                     const paragraphs = Array.from(currentPageElement.querySelectorAll('p'));
-                    
-                    // Определяем общее количество параграфов
                     const totalParagraphs = paragraphs.length;
                     
-                    // Определяем количество параграфов на страницу
-                    // Делим общее количество параграфов на количество виртуальных страниц
-                    const virtualPagesCount = totalPagesCount - <?php echo $totalChapters; ?>;
-                    const paragraphsPerPage = Math.ceil(totalParagraphs / virtualPagesCount);
+                    // Фиксированное количество параграфов на страницу
+                    const paragraphsPerPage = 5;
                     
                     // Вычисляем индекс виртуальной страницы (начиная с 0)
                     const virtualPageIndex = pageIndex - <?php echo $totalChapters; ?> - 1;
@@ -618,7 +614,6 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                     const startIndex = virtualPageIndex * paragraphsPerPage;
                     
                     console.log('Всего параграфов:', totalParagraphs);
-                    console.log('Виртуальных страниц:', virtualPagesCount);
                     console.log('Параграфов на страницу:', paragraphsPerPage);
                     console.log('Индекс виртуальной страницы:', virtualPageIndex);
                     console.log('Индекс первого параграфа:', startIndex);
@@ -737,17 +732,18 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                 const paragraphs = Array.from(currentPageElement.querySelectorAll('p'));
                 const totalParagraphs = paragraphs.length;
                 
-                // Фиксированное количество виртуальных страниц (например, 10)
-                const desiredVirtualPages = 10;
+                // Определяем количество параграфов на страницу
+                // Хотим, чтобы на странице было примерно 5-10 параграфов
+                const paragraphsPerPage = 5;
                 
                 // Вычисляем количество виртуальных страниц
-                // Минимум 1, максимум desiredVirtualPages
-                const virtualPagesCount = Math.min(desiredVirtualPages, Math.max(1, Math.ceil(totalParagraphs / 20)));
+                const virtualPagesCount = Math.max(1, Math.ceil(totalParagraphs / paragraphsPerPage));
                 
                 // Обновляем общее количество страниц
                 totalPagesCount = <?php echo $totalChapters; ?> + virtualPagesCount;
                 
                 console.log('Всего параграфов:', totalParagraphs);
+                console.log('Параграфов на страницу:', paragraphsPerPage);
                 console.log('Количество виртуальных страниц:', virtualPagesCount);
                 console.log('Общее количество страниц:', totalPagesCount);
                 
