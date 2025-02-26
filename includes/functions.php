@@ -274,6 +274,20 @@ function saveUserProgress($userId, $bookId, $page, $scrollPosition, $lastPageTex
     global $db;
     
     try {
+        // Проверяем наличие колонок в таблице
+        $conn = $db->getConnection();
+        $hasNewColumns = true;
+        
+        $result = $conn->query("SHOW COLUMNS FROM user_progress LIKE 'page'");
+        if ($result->rowCount() == 0) {
+            $hasNewColumns = false;
+            // Добавляем колонки, если их нет
+            $conn->exec("ALTER TABLE user_progress ADD COLUMN page INT DEFAULT 1");
+            $conn->exec("ALTER TABLE user_progress ADD COLUMN scroll_position INT DEFAULT 0");
+            $conn->exec("ALTER TABLE user_progress ADD COLUMN last_page_text VARCHAR(255) NULL");
+            $conn->exec("ALTER TABLE user_progress ADD COLUMN last_read TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+        }
+        
         // Проверяем, существует ли запись о прогрессе
         $sql = "SELECT id FROM user_progress 
                 WHERE user_id = :user_id AND book_id = :book_id";
@@ -287,32 +301,58 @@ function saveUserProgress($userId, $bookId, $page, $scrollPosition, $lastPageTex
         
         if ($progress) {
             // Обновляем существующую запись
-            $sql = "UPDATE user_progress 
-                    SET page = :page, 
-                        scroll_position = :scroll_position, 
-                        last_page_text = :last_page_text,
-                        last_read = NOW() 
-                    WHERE id = :id";
-            
-            $db->query($sql, [
-                ':page' => $page,
-                ':scroll_position' => $scrollPosition,
-                ':last_page_text' => $lastPageText,
-                ':id' => $progress['id']
-            ]);
+            if ($hasNewColumns) {
+                $sql = "UPDATE user_progress 
+                        SET page = :page, 
+                            scroll_position = :scroll_position, 
+                            last_page_text = :last_page_text,
+                            last_read = NOW() 
+                        WHERE id = :id";
+                
+                $db->query($sql, [
+                    ':page' => $page,
+                    ':scroll_position' => $scrollPosition,
+                    ':last_page_text' => $lastPageText,
+                    ':id' => $progress['id']
+                ]);
+            } else {
+                // Используем только колонку position для обратной совместимости
+                $sql = "UPDATE user_progress 
+                        SET position = :position,
+                            last_read = NOW() 
+                        WHERE id = :id";
+                
+                $db->query($sql, [
+                    ':position' => $page * 1000 + $scrollPosition,
+                    ':id' => $progress['id']
+                ]);
+            }
         } else {
             // Создаем новую запись
-            $sql = "INSERT INTO user_progress 
-                    (user_id, book_id, page, scroll_position, last_page_text, last_read) 
-                    VALUES (:user_id, :book_id, :page, :scroll_position, :last_page_text, NOW())";
-            
-            $db->query($sql, [
-                ':user_id' => $userId,
-                ':book_id' => $bookId,
-                ':page' => $page,
-                ':scroll_position' => $scrollPosition,
-                ':last_page_text' => $lastPageText
-            ]);
+            if ($hasNewColumns) {
+                $sql = "INSERT INTO user_progress 
+                        (user_id, book_id, page, scroll_position, last_page_text, last_read) 
+                        VALUES (:user_id, :book_id, :page, :scroll_position, :last_page_text, NOW())";
+                
+                $db->query($sql, [
+                    ':user_id' => $userId,
+                    ':book_id' => $bookId,
+                    ':page' => $page,
+                    ':scroll_position' => $scrollPosition,
+                    ':last_page_text' => $lastPageText
+                ]);
+            } else {
+                // Используем только колонку position для обратной совместимости
+                $sql = "INSERT INTO user_progress 
+                        (user_id, book_id, position) 
+                        VALUES (:user_id, :book_id, :position)";
+                
+                $db->query($sql, [
+                    ':user_id' => $userId,
+                    ':book_id' => $bookId,
+                    ':position' => $page * 1000 + $scrollPosition
+                ]);
+            }
         }
         
         return true;
