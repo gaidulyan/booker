@@ -294,7 +294,7 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                 state: {
                     virtualPages: [],
                     currentPageIndex: <?php echo $currentPage; ?>,
-                    totalPagesCount: 1,
+                    totalPagesCount: <?php echo $totalChapters; ?>,
                     userId: <?php echo $_SESSION['user_id']; ?>,
                     bookId: <?php echo $bookId; ?>,
                     progress: <?php echo json_encode($progress); ?>,
