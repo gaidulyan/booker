@@ -1,28 +1,31 @@
-/* Основные стили для читалки */
+/* Основные стили для читалки в стиле Apple Books */
 body {
     margin: 0;
     padding: 0;
-    font-family: 'Arial', sans-serif;
-    background-color: #f9f9f9;
+    font-family: 'Georgia', serif;
+    background-color: #f0ece0;
     color: #333;
     transition: background-color 0.3s, color 0.3s;
+    overflow: hidden;
 }
 
 .reader-container {
     display: flex;
     flex-direction: column;
     height: 100vh;
+    position: relative;
 }
 
+/* Верхняя панель */
 .reader-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 10px 20px;
-    background-color: #fff;
-    border-bottom: 1px solid #eee;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    transition: background-color 0.3s, border-color 0.3s;
+    background-color: rgba(240, 236, 224, 0.95);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    transition: opacity 0.3s;
 }
 
 .reader-header .left-controls {
@@ -61,100 +64,151 @@ body {
     transition: color 0.3s;
 }
 
-.book-content {
+/* Контейнер для книги */
+.book-container {
     flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    perspective: 1500px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Стили для книги */
+.book {
+    width: 100%;
+    max-width: 1600px;
+    height: calc(100vh - 120px);
+    display: flex;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.5s;
+}
+
+/* Стили для страниц */
+.book-content {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+.page {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    padding: 40px;
     overflow-y: auto;
-    padding: 20px;
-    max-width: 800px;
-    margin: 0 auto;
+    box-sizing: border-box;
+    position: relative;
     line-height: 1.6;
     font-size: 18px;
-    font-family: 'Times New Roman', Times, serif;
-    transition: background-color 0.3s;
 }
 
-.book-content h1, .book-content h2, .book-content h3 {
-    margin-top: 1.5em;
-    margin-bottom: 0.5em;
+.single-page-mode .page {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
 }
 
-.book-content p {
-    margin-bottom: 1em;
-    text-align: justify;
+.two-page-mode .book-content {
+    justify-content: center;
+}
+
+.two-page-mode .page {
+    width: calc(50% - 20px);
+    margin: 0 10px;
+    height: 100%;
+}
+
+.two-page-mode .page:first-child {
+    border-radius: 5px 0 0 5px;
+    box-shadow: -5px 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.two-page-mode .page:last-child {
+    border-radius: 0 5px 5px 0;
+    box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Нижняя панель */
+.reader-footer {
+    padding: 10px 20px;
+    background-color: rgba(240, 236, 224, 0.95);
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 100;
+    transition: opacity 0.3s;
+}
+
+.progress-container {
+    flex: 1;
+    margin: 0 20px;
 }
 
 .progress-bar {
     height: 4px;
-    background-color: #eee;
+    background-color: #ddd;
+    border-radius: 2px;
+    overflow: hidden;
     position: relative;
-    transition: background-color 0.3s;
 }
 
-.progress-indicator {
-    position: absolute;
+.progress-fill {
     height: 100%;
     background-color: #4285f4;
-    width: 0%;
+    width: 0;
     transition: width 0.3s;
 }
 
-.reader-footer {
-    padding: 10px 20px;
-    background-color: #fff;
-    border-top: 1px solid #eee;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 14px;
+.progress-text {
+    font-size: 12px;
     color: #777;
-    transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+    margin-top: 5px;
+    text-align: center;
 }
 
-/* Стили для модального окна настроек */
+/* Модальное окно настроек */
 .settings-modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    right: 0;
-    width: 300px;
-    height: 100%;
+    position: absolute;
+    top: 60px;
+    right: 20px;
     background-color: #fff;
-    box-shadow: -2px 0 5px rgba(0,0,0,0.1);
-    z-index: 1000;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
     padding: 20px;
-    overflow-y: auto;
-    transition: background-color 0.3s;
+    z-index: 1000;
+    display: none;
+    width: 250px;
 }
 
 .settings-modal h3 {
     margin-top: 0;
-    border-bottom: 1px solid #eee;
     padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+    font-size: 16px;
 }
 
-.settings-group {
+.font-size-control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     margin-bottom: 20px;
 }
 
-.settings-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
-}
-
-.font-size-controls {
-    display: flex;
-    align-items: center;
-}
-
 .font-size-btn {
-    background: #eee;
-    border: none;
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    font-weight: bold;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+    font-weight: bold;
 }
 
 .font-size-value {
@@ -194,10 +248,59 @@ body {
     border-color: #4285f4;
 }
 
+/* Навигация по страницам */
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.pagination-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #555;
+    margin: 0 10px;
+    transition: color 0.3s;
+}
+
+.pagination-btn:disabled {
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+.pagination-info {
+    font-size: 14px;
+    color: #777;
+}
+
+/* Кнопка сохранения позиции */
+.save-position-btn {
+    background-color: #4285f4;
+    color: white;
+    border: none;
+    padding: 5px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.save-position-btn:hover {
+    background-color: #3367d6;
+}
+
 /* Темы оформления */
 body.theme-light {
-    background-color: #fff;
+    background-color: #f0ece0;
     color: #333;
+}
+
+body.theme-light .reader-header,
+body.theme-light .reader-footer {
+    background-color: rgba(240, 236, 224, 0.95);
 }
 
 body.theme-sepia {
@@ -205,13 +308,12 @@ body.theme-sepia {
     color: #5b4636;
 }
 
-body.theme-sepia .book-content {
-    background-color: #f8f1e3;
+body.theme-sepia .reader-header,
+body.theme-sepia .reader-footer {
+    background-color: rgba(248, 241, 227, 0.95);
 }
 
-body.theme-sepia .reader-header,
-body.theme-sepia .reader-footer,
-body.theme-sepia .settings-modal {
+body.theme-sepia .page {
     background-color: #f8f1e3;
     border-color: #e8d8b9;
 }
@@ -221,25 +323,34 @@ body.theme-dark {
     color: #eee;
 }
 
-body.theme-dark .book-content {
-    background-color: #333;
+body.theme-dark .reader-header,
+body.theme-dark .reader-footer {
+    background-color: rgba(34, 34, 34, 0.95);
+    border-color: #444;
 }
 
-body.theme-dark .reader-header,
-body.theme-dark .reader-footer,
-body.theme-dark .settings-modal {
-    background-color: #222;
+body.theme-dark .page {
+    background-color: #333;
     border-color: #444;
+    color: #eee;
 }
 
 body.theme-dark .back-button,
 body.theme-dark .control-button,
-body.theme-dark .source-title {
+body.theme-dark .source-title,
+body.theme-dark .pagination-btn,
+body.theme-dark .pagination-info,
+body.theme-dark .progress-text {
     color: #ccc;
 }
 
 body.theme-dark .progress-bar {
     background-color: #444;
+}
+
+body.theme-dark .settings-modal {
+    background-color: #222;
+    border-color: #444;
 }
 
 body.theme-dark .settings-modal h3 {
@@ -249,72 +360,18 @@ body.theme-dark .settings-modal h3 {
 body.theme-dark .font-size-btn {
     background-color: #444;
     color: #eee;
-}
-
-/* Двухстраничный режим */
-.two-page-mode .book-content {
-    display: flex;
-    flex-wrap: wrap;
-    max-width: 1600px;
-    justify-content: center;
-    gap: 40px;
-    padding: 20px 40px;
-}
-
-.two-page-mode .book-content .page {
-    width: calc(50% - 40px);
-    min-width: 300px;
-    height: calc(100vh - 150px);
-    overflow-y: hidden;
-    border: 1px solid #ddd;
-    padding: 20px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    background-color: #fff;
-    transition: background-color 0.3s;
-}
-
-.two-page-mode.theme-sepia .book-content .page {
-    background-color: #f8f1e3;
-    border-color: #e8d8b9;
-}
-
-.two-page-mode.theme-dark .book-content .page {
-    background-color: #333;
-    border-color: #444;
+    border-color: #555;
 }
 
 /* Полноэкранный режим */
 .fullscreen-mode .reader-header,
 .fullscreen-mode .reader-footer {
     opacity: 0;
-    transition: opacity 0.3s;
 }
 
 .fullscreen-mode:hover .reader-header,
 .fullscreen-mode:hover .reader-footer {
     opacity: 1;
-}
-
-/* Кнопка переключения режима отображения */
-.layout-toggle {
-    display: flex;
-    align-items: center;
-    margin-left: 15px;
-}
-
-.layout-toggle-btn {
-    background: none;
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
-    color: #555;
-    transition: color 0.3s;
-}
-
-.layout-toggle-label {
-    font-size: 14px;
-    margin-left: 5px;
-    color: #777;
 }
 
 /* Адаптивность */
@@ -323,13 +380,20 @@ body.theme-dark .font-size-btn {
         flex-direction: column;
     }
     
-    .two-page-mode .book-content .page {
+    .two-page-mode .page {
         width: 100%;
         height: auto;
-        min-height: calc(100vh - 150px);
+        margin: 10px 0;
+        border-radius: 5px;
     }
     
     .layout-toggle {
-        display: none; /* Скрываем на мобильных устройствах */
+        display: none;
+    }
+    
+    .settings-modal {
+        width: 80%;
+        left: 10%;
+        right: 10%;
     }
 } 
