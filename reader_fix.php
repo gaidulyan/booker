@@ -338,10 +338,8 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                 clearTimeout(scrollTimeout);
                 scrollTimeout = setTimeout(function() {
                     saveProgress(false);
+                    updateProgressIndicator();
                 }, 1000);
-                
-                // Обновляем индикатор прогресса при прокрутке
-                updateProgressIndicator();
             });
             
             // Автоматическое сохранение прогресса перед закрытием страницы
@@ -354,7 +352,10 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
             window.addEventListener('resize', function() {
                 clearTimeout(resizeTimeout);
                 resizeTimeout = setTimeout(function() {
-                    // Обновляем индикатор прогресса при изменении размера окна
+                    // Пересчитываем виртуальные страницы
+                    initializeVirtualPages();
+                    
+                    // Обновляем индикатор прогресса
                     updateProgressIndicator();
                 }, 300);
             });
@@ -656,6 +657,9 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
             
             // Автоматическое сохранение прогресса при загрузке страницы
             window.addEventListener('load', function() {
+                // Инициализация виртуальных страниц
+                initializeVirtualPages();
+                
                 // Восстанавливаем позицию прокрутки
                 window.scrollTo(0, <?php echo $progress['scroll_position']; ?>);
                 
@@ -675,6 +679,173 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                     saveProgress(false);
                 }, 2000);
             });
+            
+            // Автоматическое сохранение прогресса при прокрутке
+            let scrollTimeout;
+            window.addEventListener('scroll', function() {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(function() {
+                    saveProgress(false);
+                    updateProgressIndicator();
+                }, 1000);
+            });
+            
+            // Функция для разбиения книги на виртуальные страницы
+            function initializeVirtualPages() {
+                // Получаем все элементы содержимого книги
+                const bookContentElement = document.getElementById('current-page');
+                const contentElements = Array.from(bookContentElement.querySelectorAll('p, h1, h2, h3, h4, h5, h6, div, img'));
+                
+                // Определяем высоту видимой области
+                const viewportHeight = window.innerHeight - 120; // Вычитаем высоту панелей
+                
+                // Создаем виртуальные страницы
+                let currentPage = [];
+                let currentHeight = 0;
+                virtualPages = [];
+                
+                contentElements.forEach(element => {
+                    const elementHeight = element.offsetHeight;
+                    
+                    // Если элемент не помещается на текущую страницу, создаем новую
+                    if (currentHeight + elementHeight > viewportHeight && currentPage.length > 0) {
+                        virtualPages.push(currentPage);
+                        currentPage = [element];
+                        currentHeight = elementHeight;
+                    } else {
+                        currentPage.push(element);
+                        currentHeight += elementHeight;
+                    }
+                });
+                
+                // Добавляем последнюю страницу
+                if (currentPage.length > 0) {
+                    virtualPages.push(currentPage);
+                }
+                
+                // Обновляем общее количество страниц
+                totalPagesCount = virtualPages.length;
+                
+                // Определяем текущую страницу на основе прокрутки
+                const scrollPosition = window.scrollY || document.documentElement.scrollTop;
+                currentPageIndex = 1;
+                
+                // Находим текущую виртуальную страницу на основе прокрутки
+                let accumulatedHeight = 0;
+                for (let i = 0; i < virtualPages.length; i++) {
+                    const pageHeight = virtualPages[i].reduce((sum, element) => sum + element.offsetHeight, 0);
+                    
+                    if (accumulatedHeight + pageHeight > scrollPosition) {
+                        currentPageIndex = i + 1;
+                        break;
+                    }
+                    
+                    accumulatedHeight += pageHeight;
+                }
+                
+                // Обновляем информацию о страницах
+                updatePageInfo();
+            }
+            
+            // Функция для перехода к виртуальной странице
+            function goToPage(pageIndex) {
+                if (pageIndex < 1 || pageIndex > virtualPages.length) {
+                    return;
+                }
+                
+                // Обновляем текущую страницу
+                currentPageIndex = pageIndex;
+                
+                // Находим первый элемент на странице
+                const firstElement = virtualPages[pageIndex - 1][0];
+                
+                // Прокручиваем к этому элементу
+                firstElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                
+                // Обновляем URL без перезагрузки страницы
+                const url = new URL(window.location.href);
+                url.searchParams.set('page', pageIndex);
+                window.history.pushState({ page: pageIndex }, '', url.toString());
+                
+                // Обновляем информацию о страницах
+                updatePageInfo();
+                
+                // Обновляем индикатор прогресса
+                setTimeout(updateProgressIndicator, 500);
+                
+                // Сохраняем прогресс
+                setTimeout(function() {
+                    saveProgress(false);
+                }, 1000);
+            }
+            
+            // Функция для перехода к главе
+            function goToChapter(chapterId) {
+                // Находим элемент главы
+                const chapterElement = document.getElementById(chapterId);
+                if (chapterElement) {
+                    // Прокручиваем к элементу
+                    chapterElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    
+                    // Находим номер главы
+                    const chapterNum = parseInt(chapterId.replace('chapter_', ''));
+                    
+                    // Обновляем активную главу в оглавлении
+                    tocItems.forEach(item => {
+                        item.classList.remove('active');
+                        if (parseInt(item.getAttribute('data-page')) === chapterNum) {
+                            item.classList.add('active');
+                        }
+                    });
+                    
+                    // Находим виртуальную страницу, на которой находится глава
+                    let pageIndex = 1;
+                    for (let i = 0; i < virtualPages.length; i++) {
+                        if (virtualPages[i].some(element => element === chapterElement || element.contains(chapterElement))) {
+                            pageIndex = i + 1;
+                            break;
+                        }
+                    }
+                    
+                    // Обновляем текущую страницу
+                    currentPageIndex = pageIndex;
+                    
+                    // Обновляем URL без перезагрузки страницы
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('page', pageIndex);
+                    url.searchParams.set('chapter', chapterNum);
+                    window.history.pushState({ page: pageIndex, chapter: chapterNum }, '', url.toString());
+                    
+                    // Обновляем информацию о страницах
+                    updatePageInfo();
+                    
+                    // Обновляем индикатор прогресса
+                    setTimeout(updateProgressIndicator, 500);
+                    
+                    // Сохраняем прогресс
+                    setTimeout(function() {
+                        saveProgress(false);
+                    }, 1000);
+                }
+            }
+            
+            // Обработка изменения истории браузера
+            window.addEventListener('popstate', function(event) {
+                if (event.state && event.state.page) {
+                    currentPageIndex = event.state.page;
+                    
+                    if (event.state.chapter) {
+                        goToChapter('chapter_' + event.state.chapter);
+                    } else {
+                        goToPage(currentPageIndex);
+                    }
+                }
+            });
+            
+            // Инициализация
+            let virtualPages = [];
+            let currentPageIndex = <?php echo $currentPage; ?>;
+            let totalPagesCount = 1;
         });
     </script>
 </body>
