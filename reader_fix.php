@@ -314,17 +314,49 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
             let virtualPages = [];
             let currentVirtualPage = 1;
             
+            // Автоматическое сохранение прогресса при прокрутке
+            let scrollTimeout;
+            window.addEventListener('scroll', function() {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(function() {
+                    saveProgress(false);
+                }, 1000);
+                
+                // Обновляем индикатор прогресса при прокрутке
+                updateProgressIndicator();
+            });
+            
+            // Автоматическое сохранение прогресса перед закрытием страницы
+            window.addEventListener('beforeunload', function() {
+                saveProgress(false);
+            });
+            
+            // Обработка изменения размера окна
+            let resizeTimeout;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(function() {
+                    // Обновляем индикатор прогресса при изменении размера окна
+                    updateProgressIndicator();
+                }, 300);
+            });
+            
             // Инициализация
-            fontSizeValue.textContent = fontSize;
             updateFontSize();
+            updateProgressIndicator();
+            updatePageInfo();
             
             // Восстанавливаем тему
             const savedTheme = localStorage.getItem('reader_theme') || 'light';
             document.body.classList.add('theme-' + savedTheme);
             document.querySelector(`.theme-option[data-theme="${savedTheme}"]`).classList.add('active');
             
-            // Инициализация страниц
-            initializePages();
+            // Если есть ID главы в URL, переходим к ней
+            const urlParams = new URLSearchParams(window.location.search);
+            const chapterId = urlParams.get('chapter');
+            if (chapterId) {
+                goToChapter('chapter_' + chapterId);
+            }
             
             // Функции
             function initializePages() {
@@ -700,24 +732,6 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                     event.preventDefault();
                     tocButton.click();
                 }
-            });
-            
-            // Автоматическое сохранение прогресса при загрузке страницы
-            window.addEventListener('load', function() {
-                // Восстанавливаем режим отображения
-                if (localStorage.getItem('reader_two_page_mode') === '1') {
-                    toggleTwoPageMode();
-                }
-                
-                // Автоматически сохраняем прогресс
-                setTimeout(function() {
-                    saveProgress(false);
-                }, 2000);
-            });
-            
-            // Автоматическое сохранение прогресса перед закрытием страницы
-            window.addEventListener('beforeunload', function() {
-                saveProgress(false);
             });
         });
     </script>
