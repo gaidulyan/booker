@@ -270,20 +270,93 @@ function getUserProgress($userId, $bookId) {
     return 0;
 }
 
-function saveUserProgress($userId, $bookId, $position) {
+function saveUserProgress($userId, $bookId, $page, $scrollPosition, $lastPageText = '') {
     global $db;
     
-    $sql = "INSERT INTO user_progress (user_id, book_id, position) 
-            VALUES (:user_id, :book_id, :position)
-            ON DUPLICATE KEY UPDATE position = :position";
+    // Проверяем, существует ли запись о прогрессе
+    $sql = "SELECT id FROM user_progress 
+            WHERE user_id = :user_id AND book_id = :book_id";
+    
+    $result = $db->query($sql, [
+        ':user_id' => $userId,
+        ':book_id' => $bookId
+    ]);
+    
+    $progress = $result->fetch(PDO::FETCH_ASSOC);
+    
+    if ($progress) {
+        // Обновляем существующую запись
+        $sql = "UPDATE user_progress 
+                SET position = :position, page = :page, 
+                    scroll_position = :scroll_position, 
+                    last_page_text = :last_page_text,
+                    last_read = NOW() 
+                WHERE id = :id";
+        
+        $db->query($sql, [
+            ':position' => $page * 1000 + $scrollPosition, // Для обратной совместимости
+            ':page' => $page,
+            ':scroll_position' => $scrollPosition,
+            ':last_page_text' => $lastPageText,
+            ':id' => $progress['id']
+        ]);
+    } else {
+        // Создаем новую запись
+        $sql = "INSERT INTO user_progress 
+                (user_id, book_id, position, page, scroll_position, last_page_text) 
+                VALUES (:user_id, :book_id, :position, :page, :scroll_position, :last_page_text)";
+        
+        $db->query($sql, [
+            ':user_id' => $userId,
+            ':book_id' => $bookId,
+            ':position' => $page * 1000 + $scrollPosition, // Для обратной совместимости
+            ':page' => $page,
+            ':scroll_position' => $scrollPosition,
+            ':last_page_text' => $lastPageText
+        ]);
+    }
+    
+    return true;
+}
+
+function getUserDetailedProgress($userId, $bookId) {
+    global $db;
+    
+    $sql = "SELECT * FROM user_progress 
+            WHERE user_id = :user_id AND book_id = :book_id";
+    
+    $result = $db->query($sql, [
+        ':user_id' => $userId,
+        ':book_id' => $bookId
+    ]);
+    
+    $progress = $result->fetch(PDO::FETCH_ASSOC);
+    
+    if ($progress) {
+        return [
+            'page' => $progress['page'],
+            'scroll_position' => $progress['scroll_position'],
+            'last_page_text' => $progress['last_page_text'],
+            'last_read' => $progress['last_read']
+        ];
+    }
+    
+    // Если записи нет, создаем новую
+    $sql = "INSERT INTO user_progress 
+            (user_id, book_id, position, page, scroll_position) 
+            VALUES (:user_id, :book_id, 0, 1, 0)";
     
     $db->query($sql, [
         ':user_id' => $userId,
-        ':book_id' => $bookId,
-        ':position' => $position
+        ':book_id' => $bookId
     ]);
     
-    return true;
+    return [
+        'page' => 1,
+        'scroll_position' => 0,
+        'last_page_text' => '',
+        'last_read' => date('Y-m-d H:i:s')
+    ];
 }
 
 function getAllBooks() {
