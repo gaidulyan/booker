@@ -586,26 +586,25 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                         });
                     }
                 } else {
-                    // Иначе переходим к виртуальной странице
+                    // Для виртуальных страниц используем другой подход
                     // Вычисляем индекс виртуальной страницы (отсчет от 0)
-                    const virtualPageIndex = pageIndex - <?php echo $totalChapters; ?> - 1;
+                    const virtualPageIndex = pageIndex - <?php echo $totalChapters; ?>;
                     
-                    console.log('Переход к виртуальной странице:', virtualPageIndex + 1);
-                    console.log('Всего виртуальных страниц:', virtualPages.length);
+                    // Находим все параграфы
+                    const paragraphs = Array.from(currentPageElement.querySelectorAll('p'));
                     
-                    if (virtualPageIndex >= 0 && virtualPageIndex < virtualPages.length) {
-                        // Находим первый элемент на странице
-                        const firstElement = virtualPages[virtualPageIndex][0];
-                        
-                        // Прокручиваем к этому элементу
-                        if (firstElement) {
-                            console.log('Прокрутка к элементу:', firstElement);
-                            firstElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        } else {
-                            console.error('Элемент не найден для виртуальной страницы', virtualPageIndex + 1);
-                        }
-                    } else {
-                        console.error('Некорректный индекс виртуальной страницы:', virtualPageIndex + 1);
+                    // Определяем высоту видимой области
+                    const viewportHeight = window.innerHeight - 120; // Вычитаем высоту панелей
+                    
+                    // Вычисляем, сколько параграфов должно быть на одной странице
+                    const paragraphsPerPage = Math.max(1, Math.ceil(paragraphs.length / (totalPagesCount - <?php echo $totalChapters; ?>)));
+                    
+                    // Вычисляем индекс первого параграфа на странице
+                    const startIndex = (virtualPageIndex - 1) * paragraphsPerPage;
+                    
+                    // Если индекс корректный, прокручиваем к этому параграфу
+                    if (startIndex >= 0 && startIndex < paragraphs.length) {
+                        paragraphs[startIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
                 }
                 
@@ -708,54 +707,25 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
             
             // Функция для разбиения книги на виртуальные страницы
             function initializeVirtualPages() {
-                // Получаем все элементы содержимого книги
-                const contentElements = Array.from(currentPageElement.querySelectorAll('p, h1, h2, h3, h4, h5, h6, div, img'));
+                // Получаем все параграфы
+                const paragraphs = Array.from(currentPageElement.querySelectorAll('p'));
                 
-                // Определяем высоту видимой области
-                const viewportHeight = window.innerHeight - 120; // Вычитаем высоту панелей
-                
-                // Создаем виртуальные страницы
-                let currentPage = [];
-                let currentHeight = 0;
-                virtualPages = [];
-                
-                contentElements.forEach(element => {
-                    const elementHeight = element.offsetHeight;
-                    
-                    // Если элемент не помещается на текущую страницу, создаем новую
-                    if (currentHeight + elementHeight > viewportHeight && currentPage.length > 0) {
-                        virtualPages.push(currentPage);
-                        currentPage = [element];
-                        currentHeight = elementHeight;
-                    } else {
-                        currentPage.push(element);
-                        currentHeight += elementHeight;
-                    }
-                });
-                
-                // Добавляем последнюю страницу
-                if (currentPage.length > 0) {
-                    virtualPages.push(currentPage);
-                }
+                // Определяем количество виртуальных страниц
+                // Предположим, что мы хотим иметь примерно 20 параграфов на странице
+                const paragraphsPerPage = 20;
+                const virtualPagesCount = Math.ceil(paragraphs.length / paragraphsPerPage);
                 
                 // Обновляем общее количество страниц
-                // Используем сумму количества глав и виртуальных страниц
-                totalPagesCount = <?php echo $totalChapters; ?> + virtualPages.length;
+                totalPagesCount = <?php echo $totalChapters; ?> + virtualPagesCount;
                 
                 // Обновляем информацию о страницах
                 updatePageInfo();
                 
                 console.log('Виртуальные страницы инициализированы. Всего страниц: ' + totalPagesCount);
                 console.log('Количество глав: ' + <?php echo $totalChapters; ?>);
-                console.log('Количество виртуальных страниц: ' + virtualPages.length);
-                
-                // Выводим информацию о каждой виртуальной странице
-                virtualPages.forEach((page, index) => {
-                    console.log(`Виртуальная страница ${index + 1} содержит ${page.length} элементов`);
-                    if (page.length > 0) {
-                        console.log('Первый элемент:', page[0]);
-                    }
-                });
+                console.log('Количество виртуальных страниц: ' + virtualPagesCount);
+                console.log('Всего параграфов: ' + paragraphs.length);
+                console.log('Параграфов на страницу: ' + paragraphsPerPage);
             }
         });
     </script>
