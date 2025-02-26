@@ -387,6 +387,7 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                 }
             });
             
+            // Обработчик для кнопки сохранения
             saveBtn.addEventListener('click', function() {
                 saveProgress(true);
             });
@@ -570,8 +571,6 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                 }
                 
                 console.log('Переход к странице:', pageIndex);
-                console.log('Общее количество страниц:', totalPagesCount);
-                console.log('Количество глав:', <?php echo $totalChapters; ?>);
                 
                 // Обновляем текущую страницу
                 currentPageIndex = pageIndex;
@@ -603,32 +602,35 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                     
                     // Находим все параграфы
                     const paragraphs = Array.from(currentPageElement.querySelectorAll('p'));
-                    console.log('Всего параграфов:', paragraphs.length);
                     
-                    // Фиксированное количество параграфов на страницу
-                    const paragraphsPerPage = 20;
-                    console.log('Параграфов на страницу:', paragraphsPerPage);
+                    // Определяем общее количество параграфов
+                    const totalParagraphs = paragraphs.length;
+                    
+                    // Определяем количество параграфов на страницу
+                    // Делим общее количество параграфов на количество виртуальных страниц
+                    const virtualPagesCount = totalPagesCount - <?php echo $totalChapters; ?>;
+                    const paragraphsPerPage = Math.ceil(totalParagraphs / virtualPagesCount);
                     
                     // Вычисляем индекс виртуальной страницы (начиная с 0)
                     const virtualPageIndex = pageIndex - <?php echo $totalChapters; ?> - 1;
-                    console.log('Индекс виртуальной страницы:', virtualPageIndex);
                     
                     // Вычисляем индекс первого параграфа на странице
                     const startIndex = virtualPageIndex * paragraphsPerPage;
+                    
+                    console.log('Всего параграфов:', totalParagraphs);
+                    console.log('Виртуальных страниц:', virtualPagesCount);
+                    console.log('Параграфов на страницу:', paragraphsPerPage);
+                    console.log('Индекс виртуальной страницы:', virtualPageIndex);
                     console.log('Индекс первого параграфа:', startIndex);
                     
                     // Если индекс корректный, прокручиваем к этому параграфу
-                    if (startIndex >= 0 && startIndex < paragraphs.length) {
+                    if (startIndex >= 0 && startIndex < totalParagraphs) {
                         console.log('Прокрутка к параграфу:', startIndex);
                         paragraphs[startIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    } else {
-                        console.error('Некорректный индекс параграфа:', startIndex);
-                        
+                    } else if (totalParagraphs > 0) {
                         // Если индекс некорректный, переходим к последнему параграфу
-                        if (paragraphs.length > 0) {
-                            console.log('Прокрутка к последнему параграфу');
-                            paragraphs[paragraphs.length - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }
+                        console.log('Прокрутка к последнему параграфу');
+                        paragraphs[totalParagraphs - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
                 }
                 
@@ -733,28 +735,24 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
             function initializeVirtualPages() {
                 // Получаем все параграфы
                 const paragraphs = Array.from(currentPageElement.querySelectorAll('p'));
-                console.log('Всего параграфов:', paragraphs.length);
+                const totalParagraphs = paragraphs.length;
                 
-                // Фиксированное количество параграфов на страницу
-                const paragraphsPerPage = 20;
+                // Фиксированное количество виртуальных страниц (например, 10)
+                const desiredVirtualPages = 10;
                 
                 // Вычисляем количество виртуальных страниц
-                const virtualPagesCount = Math.max(1, Math.ceil(paragraphs.length / paragraphsPerPage));
-                console.log('Количество виртуальных страниц:', virtualPagesCount);
+                // Минимум 1, максимум desiredVirtualPages
+                const virtualPagesCount = Math.min(desiredVirtualPages, Math.max(1, Math.ceil(totalParagraphs / 20)));
                 
                 // Обновляем общее количество страниц
                 totalPagesCount = <?php echo $totalChapters; ?> + virtualPagesCount;
+                
+                console.log('Всего параграфов:', totalParagraphs);
+                console.log('Количество виртуальных страниц:', virtualPagesCount);
                 console.log('Общее количество страниц:', totalPagesCount);
                 
                 // Обновляем информацию о страницах
                 updatePageInfo();
-                
-                // Выводим информацию о каждой виртуальной странице
-                for (let i = 0; i < virtualPagesCount; i++) {
-                    const startIndex = i * paragraphsPerPage;
-                    const endIndex = Math.min(startIndex + paragraphsPerPage, paragraphs.length);
-                    console.log(`Виртуальная страница ${i + 1}: параграфы ${startIndex + 1}-${endIndex}`);
-                }
             }
         });
     </script>
