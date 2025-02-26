@@ -19,7 +19,7 @@ if (!$data || !isset($data['book_id']) || !isset($data['page']) || !isset($data[
 }
 
 // Проверяем, что пользователь сохраняет свой прогресс
-if ($data['user_id'] != $_SESSION['user_id']) {
+if (!isset($data['user_id']) || $data['user_id'] != $_SESSION['user_id']) {
     http_response_code(403);
     echo json_encode(['error' => 'Forbidden']);
     exit;

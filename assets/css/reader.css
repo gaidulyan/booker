@@ -1,0 +1,252 @@
+/* Основные стили для читалки */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Arial', sans-serif;
+    background-color: #f9f9f9;
+    color: #333;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.reader-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.reader-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background-color: #fff;
+    border-bottom: 1px solid #eee;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.reader-header .left-controls {
+    display: flex;
+    align-items: center;
+}
+
+.reader-header .right-controls {
+    display: flex;
+    align-items: center;
+}
+
+.back-button {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #555;
+    margin-right: 15px;
+    transition: color 0.3s;
+}
+
+.source-title {
+    font-size: 16px;
+    color: #777;
+    transition: color 0.3s;
+}
+
+.control-button {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #555;
+    margin-left: 15px;
+    transition: color 0.3s;
+}
+
+.book-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+    line-height: 1.6;
+    font-size: 18px;
+    font-family: 'Times New Roman', Times, serif;
+    transition: background-color 0.3s;
+}
+
+.book-content h1, .book-content h2, .book-content h3 {
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+
+.book-content p {
+    margin-bottom: 1em;
+    text-align: justify;
+}
+
+.progress-bar {
+    height: 4px;
+    background-color: #eee;
+    position: relative;
+    transition: background-color 0.3s;
+}
+
+.progress-indicator {
+    position: absolute;
+    height: 100%;
+    background-color: #4285f4;
+    width: 0%;
+    transition: width 0.3s;
+}
+
+.reader-footer {
+    padding: 10px 20px;
+    background-color: #fff;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: #777;
+    transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+}
+
+/* Стили для модального окна настроек */
+.settings-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 300px;
+    height: 100%;
+    background-color: #fff;
+    box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+    z-index: 1000;
+    padding: 20px;
+    overflow-y: auto;
+    transition: background-color 0.3s;
+}
+
+.settings-modal h3 {
+    margin-top: 0;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.settings-group {
+    margin-bottom: 20px;
+}
+
+.settings-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.font-size-controls {
+    display: flex;
+    align-items: center;
+}
+
+.font-size-btn {
+    background: #eee;
+    border: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.font-size-value {
+    margin: 0 10px;
+}
+
+.theme-options {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.theme-option {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.theme-option.light {
+    background-color: #fff;
+    border-color: #ddd;
+}
+
+.theme-option.sepia {
+    background-color: #f8f1e3;
+    border-color: #e8d8b9;
+}
+
+.theme-option.dark {
+    background-color: #333;
+    border-color: #555;
+}
+
+.theme-option.active {
+    border-color: #4285f4;
+}
+
+/* Темы оформления */
+body.theme-light {
+    background-color: #fff;
+    color: #333;
+}
+
+body.theme-sepia {
+    background-color: #f8f1e3;
+    color: #5b4636;
+}
+
+body.theme-sepia .book-content {
+    background-color: #f8f1e3;
+}
+
+body.theme-sepia .reader-header,
+body.theme-sepia .reader-footer,
+body.theme-sepia .settings-modal {
+    background-color: #f8f1e3;
+    border-color: #e8d8b9;
+}
+
+body.theme-dark {
+    background-color: #333;
+    color: #eee;
+}
+
+body.theme-dark .book-content {
+    background-color: #333;
+}
+
+body.theme-dark .reader-header,
+body.theme-dark .reader-footer,
+body.theme-dark .settings-modal {
+    background-color: #222;
+    border-color: #444;
+}
+
+body.theme-dark .back-button,
+body.theme-dark .control-button,
+body.theme-dark .source-title {
+    color: #ccc;
+}
+
+body.theme-dark .progress-bar {
+    background-color: #444;
+}
+
+body.theme-dark .settings-modal h3 {
+    border-color: #444;
+}
+
+body.theme-dark .font-size-btn {
+    background-color: #444;
+    color: #eee;
+} 

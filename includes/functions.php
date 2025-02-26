@@ -322,41 +322,85 @@ function saveUserProgress($userId, $bookId, $page, $scrollPosition, $lastPageTex
 function getUserDetailedProgress($userId, $bookId) {
     global $db;
     
-    $sql = "SELECT * FROM user_progress 
-            WHERE user_id = :user_id AND book_id = :book_id";
-    
-    $result = $db->query($sql, [
-        ':user_id' => $userId,
-        ':book_id' => $bookId
-    ]);
-    
-    $progress = $result->fetch(PDO::FETCH_ASSOC);
-    
-    if ($progress) {
+    try {
+        // Проверяем наличие колонок в таблице
+        $conn = $db->getConnection();
+        $hasNewColumns = true;
+        
+        $result = $conn->query("SHOW COLUMNS FROM user_progress LIKE 'page'");
+        if ($result->rowCount() == 0) {
+            $hasNewColumns = false;
+            // Добавляем колонки, если их нет
+            $conn->exec("ALTER TABLE user_progress ADD COLUMN page INT DEFAULT 1");
+            $conn->exec("ALTER TABLE user_progress ADD COLUMN scroll_position INT DEFAULT 0");
+            $conn->exec("ALTER TABLE user_progress ADD COLUMN last_page_text VARCHAR(255) NULL");
+            $conn->exec("ALTER TABLE user_progress ADD COLUMN last_read TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+        }
+        
+        // Получаем прогресс
+        $sql = "SELECT * FROM user_progress 
+                WHERE user_id = :user_id AND book_id = :book_id";
+        
+        $result = $db->query($sql, [
+            ':user_id' => $userId,
+            ':book_id' => $bookId
+        ]);
+        
+        $progress = $result->fetch(PDO::FETCH_ASSOC);
+        
+        if ($progress) {
+            // Если добавили новые колонки, обновляем их значения на основе position
+            if (!$hasNewColumns && isset($progress['position'])) {
+                $page = floor($progress['position'] / 1000);
+                $scrollPosition = $progress['position'] % 1000;
+                
+                $sql = "UPDATE user_progress 
+                        SET page = :page, scroll_position = :scroll_position 
+                        WHERE id = :id";
+                
+                $db->query($sql, [
+                    ':page' => $page > 0 ? $page : 1,
+                    ':scroll_position' => $scrollPosition,
+                    ':id' => $progress['id']
+                ]);
+                
+                $progress['page'] = $page > 0 ? $page : 1;
+                $progress['scroll_position'] = $scrollPosition;
+            }
+            
+            return [
+                'page' => $progress['page'] ?? 1,
+                'scroll_position' => $progress['scroll_position'] ?? 0,
+                'last_page_text' => $progress['last_page_text'] ?? '',
+                'last_read' => $progress['last_read'] ?? date('Y-m-d H:i:s')
+            ];
+        }
+        
+        // Если записи нет, создаем новую
+        $sql = "INSERT INTO user_progress 
+                (user_id, book_id, position, page, scroll_position) 
+                VALUES (:user_id, :book_id, 0, 1, 0)";
+        
+        $db->query($sql, [
+            ':user_id' => $userId,
+            ':book_id' => $bookId
+        ]);
+        
         return [
-            'page' => $progress['page'],
-            'scroll_position' => $progress['scroll_position'],
-            'last_page_text' => $progress['last_page_text'],
-            'last_read' => $progress['last_read']
+            'page' => 1,
+            'scroll_position' => 0,
+            'last_page_text' => '',
+            'last_read' => date('Y-m-d H:i:s')
+        ];
+    } catch (Exception $e) {
+        // В случае ошибки возвращаем значения по умолчанию
+        return [
+            'page' => 1,
+            'scroll_position' => 0,
+            'last_page_text' => '',
+            'last_read' => date('Y-m-d H:i:s')
         ];
     }
-    
-    // Если записи нет, создаем новую
-    $sql = "INSERT INTO user_progress 
-            (user_id, book_id, position, page, scroll_position) 
-            VALUES (:user_id, :book_id, 0, 1, 0)";
-    
-    $db->query($sql, [
-        ':user_id' => $userId,
-        ':book_id' => $bookId
-    ]);
-    
-    return [
-        'page' => 1,
-        'scroll_position' => 0,
-        'last_page_text' => '',
-        'last_read' => date('Y-m-d H:i:s')
-    ];
 }
 
 function getAllBooks() {
