@@ -67,93 +67,50 @@ foreach ($headings as $heading) {
     }
 }
 
-// Разбиваем книгу на страницы
-$contentPages = [];
-$paragraphs = $xpath->query('//p');
-$pageContent = '';
-$paragraphCount = 0;
-$wordsPerPage = 250; // Количество слов на странице
-$wordCount = 0;
+// Получаем полное содержимое книги с добавленными ID для глав
+$bookContent = $dom->saveHTML();
 
-foreach ($paragraphs as $paragraph) {
-    $paragraphText = $dom->saveHTML($paragraph);
-    $paragraphWords = str_word_count(strip_tags($paragraphText));
+// Если оглавление пустое, создаем искусственное оглавление
+if (empty($chapters)) {
+    // Получаем все параграфы
+    $paragraphs = $xpath->query('//p');
+    $totalParagraphs = $paragraphs->length;
     
-    // Если добавление этого параграфа превысит лимит слов на странице, создаем новую страницу
-    if ($wordCount > 0 && ($wordCount + $paragraphWords) > $wordsPerPage) {
-        $contentPages[] = $pageContent;
-        $pageContent = $paragraphText;
-        $wordCount = $paragraphWords;
-    } else {
-        $pageContent .= $paragraphText;
-        $wordCount += $paragraphWords;
+    // Создаем примерно 10 глав
+    $chapterSize = max(1, ceil($totalParagraphs / 10));
+    
+    for ($i = 0; $i < $totalParagraphs; $i += $chapterSize) {
+        $chapterIndex++;
+        $chapterTitle = 'Часть ' . $chapterIndex;
+        
+        // Если есть параграф для этой главы
+        if ($i < $totalParagraphs) {
+            $paragraphs->item($i)->setAttribute('id', 'chapter_' . $chapterIndex);
+            $chapters[] = [
+                'id' => $chapterIndex,
+                'title' => $chapterTitle,
+                'element_id' => 'chapter_' . $chapterIndex
+            ];
+        }
     }
+    
+    // Получаем обновленное содержимое книги с добавленными ID
+    $bookContent = $dom->saveHTML();
 }
 
-// Добавляем последнюю страницу
-if (!empty($pageContent)) {
-    $contentPages[] = $pageContent;
+// Общее количество глав
+$totalChapters = count($chapters);
+
+// Если текущая страница больше общего количества глав, устанавливаем последнюю
+if ($currentPage > $totalChapters && $totalChapters > 0) {
+    $currentPage = $totalChapters;
 }
 
-// Если страниц нет, используем весь контент как одну страницу
-if (empty($contentPages)) {
-    $contentPages[] = $book['content'];
-}
-
-// Общее количество страниц
-$totalPages = count($contentPages);
-
-// Если текущая страница больше общего количества, устанавливаем последнюю
-if ($currentPage > $totalPages) {
-    $currentPage = $totalPages;
-}
-
-// Определяем, к какой главе относится текущая страница
+// Определяем текущую главу
 $currentChapter = null;
-$chapterPageMap = [];
-$lastChapterIndex = 0;
-
-// Создаем карту соответствия страниц и глав
-foreach ($contentPages as $pageIndex => $pageContent) {
-    $pageDom = new DOMDocument();
-    @$pageDom->loadHTML('<?xml encoding="UTF-8">' . $pageContent);
-    $pageXpath = new DOMXPath($pageDom);
-    
-    // Проверяем, есть ли на этой странице заголовок главы
-    $pageHeadings = $pageXpath->query('//h1|//h2|//h3|//h4|//div[@class="title"]|//div[@class="subtitle"]');
-    
-    if ($pageHeadings->length > 0) {
-        foreach ($pageHeadings as $heading) {
-            $headingText = trim($heading->textContent);
-            
-            // Ищем соответствующую главу в общем списке
-            foreach ($chapters as $chapter) {
-                if ($chapter['title'] === $headingText) {
-                    $chapterPageMap[$pageIndex + 1] = $chapter['id'];
-                    $lastChapterIndex = $chapter['id'];
-                    break;
-                }
-            }
-        }
-    } else {
-        // Если на странице нет заголовка, используем последний известный
-        $chapterPageMap[$pageIndex + 1] = $lastChapterIndex;
-    }
-    
-    // Если текущая страница, запоминаем главу
-    if ($pageIndex + 1 === $currentPage && isset($chapterPageMap[$currentPage])) {
-        foreach ($chapters as $chapter) {
-            if ($chapter['id'] === $chapterPageMap[$currentPage]) {
-                $currentChapter = $chapter;
-                break;
-            }
-        }
-    }
+if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
+    $currentChapter = $chapters[$currentPage - 1];
 }
-
-// Получаем содержимое текущей страницы
-$currentPageContent = isset($contentPages[$currentPage - 1]) ? $contentPages[$currentPage - 1] : '';
-$nextPageContent = isset($contentPages[$currentPage]) ? $contentPages[$currentPage] : '';
 ?>
 
 <!DOCTYPE html>
@@ -200,13 +157,9 @@ $nextPageContent = isset($contentPages[$currentPage]) ? $contentPages[$currentPa
                 </button>
             </div>
             <ul class="toc-list">
-                <?php foreach ($chapters as $chapter): 
-                    // Находим первую страницу, на которой встречается эта глава
-                    $chapterFirstPage = array_search($chapter['id'], $chapterPageMap);
-                    if ($chapterFirstPage === false) $chapterFirstPage = 1;
-                ?>
-                <li class="toc-item <?php echo ($currentChapter && $chapter['id'] == $currentChapter['id']) ? 'active' : ''; ?>" 
-                    data-page="<?php echo $chapterFirstPage; ?>" 
+                <?php foreach ($chapters as $index => $chapter): ?>
+                <li class="toc-item <?php echo ($currentPage == $index + 1) ? 'active' : ''; ?>" 
+                    data-page="<?php echo $index + 1; ?>" 
                     data-element-id="<?php echo $chapter['element_id']; ?>">
                     <?php echo htmlspecialchars($chapter['title']); ?>
                 </li>
@@ -217,13 +170,12 @@ $nextPageContent = isset($contentPages[$currentPage]) ? $contentPages[$currentPa
         <!-- Контейнер для книги -->
         <div class="book-container">
             <div class="book">
-                <div class="book-content">
+                <div class="book-content" id="book-content">
+                    <!-- Содержимое книги -->
                     <div class="page" id="current-page">
-                        <?php echo $currentPageContent; ?>
+                        <?php echo $bookContent; ?>
                     </div>
-                    <div class="page" id="next-page" style="display: none;">
-                        <?php echo $nextPageContent; ?>
-                    </div>
+                    <div class="page" id="next-page" style="display: none;"></div>
                 </div>
             </div>
         </div>
@@ -231,32 +183,34 @@ $nextPageContent = isset($contentPages[$currentPage]) ? $contentPages[$currentPa
         <!-- Нижняя панель -->
         <footer class="reader-footer">
             <div class="pagination">
-                <button class="pagination-btn" id="prev-page">
+                <button class="pagination-btn" id="prev-page-btn">
                     <i class="fas fa-chevron-left"></i>
                 </button>
-                <span class="pagination-info">
-                    Страница <span id="current-page-num"><?php echo $currentPage; ?></span> из <span id="total-pages"><?php echo $totalPages; ?></span>
-                </span>
+                <div class="pagination-info">
+                    <span id="current-page-num"><?php echo $currentPage; ?></span> из <span id="total-pages">...</span>
+                </div>
                 <button class="pagination-btn" id="next-page-btn">
                     <i class="fas fa-chevron-right"></i>
                 </button>
             </div>
             <div class="progress">
                 <div class="progress-bar">
-                    <div class="progress-fill" style="width: <?php echo ($totalPages > 0) ? ($currentPage / $totalPages * 100) : 0; ?>%"></div>
+                    <div class="progress-fill" style="width: 0%"></div>
                 </div>
-                <span class="progress-text"><?php echo ($totalPages > 0) ? round($currentPage / $totalPages * 100) : 0; ?>%</span>
+                <div class="progress-text">0%</div>
             </div>
-            <button class="save-btn" id="save-btn">Сохранить позицию</button>
+            <button class="save-btn" id="save-btn">
+                <i class="fas fa-bookmark"></i> Сохранить
+            </button>
         </footer>
         
         <!-- Модальное окно настроек -->
-        <div class="settings-modal" id="settings-modal">
-            <h3>Настройки чтения</h3>
-            <div class="font-size-control">
-                <button class="font-size-btn" id="decrease-font">-</button>
-                <span class="font-size-value" id="font-size-value">18</span>
-                <button class="font-size-btn" id="increase-font">+</button>
+        <div class="settings-modal" id="settings-modal" style="display: none;">
+            <h3>Размер шрифта</h3>
+            <div class="font-size-controls">
+                <button class="font-size-btn" id="decrease-font">A-</button>
+                <span id="font-size-value">18</span>
+                <button class="font-size-btn" id="increase-font">A+</button>
             </div>
             <h3>Тема</h3>
             <div class="theme-options">
@@ -274,7 +228,7 @@ $nextPageContent = isset($contentPages[$currentPage]) ? $contentPages[$currentPa
             const fontButton = document.getElementById('font-button');
             const fullscreenButton = document.getElementById('fullscreen-button');
             const layoutToggle = document.getElementById('layout-toggle');
-            const prevPageBtn = document.getElementById('prev-page');
+            const prevPageBtn = document.getElementById('prev-page-btn');
             const nextPageBtn = document.getElementById('next-page-btn');
             const saveBtn = document.getElementById('save-btn');
             const settingsModal = document.getElementById('settings-modal');
@@ -286,22 +240,24 @@ $nextPageContent = isset($contentPages[$currentPage]) ? $contentPages[$currentPa
             const nextPageElement = document.getElementById('next-page');
             const progressFill = document.querySelector('.progress-fill');
             const progressText = document.querySelector('.progress-text');
-            const paginationInfo = document.querySelector('.pagination-info');
+            const currentPageNum = document.getElementById('current-page-num');
+            const totalPagesElement = document.getElementById('total-pages');
             const tocButton = document.getElementById('toc-button');
             const tocModal = document.getElementById('toc-modal');
             const tocClose = document.getElementById('toc-close');
             const tocItems = document.querySelectorAll('.toc-item');
-            const currentPageNum = document.getElementById('current-page-num');
-            const totalPages = document.getElementById('total-pages');
+            const bookContent = document.getElementById('book-content');
             
             // Переменные
             const bookId = <?php echo $bookId; ?>;
             const userId = <?php echo $_SESSION['user_id']; ?>;
             let currentPageIndex = <?php echo $currentPage; ?>;
-            let totalPagesCount = <?php echo $totalPages; ?>;
+            let totalPagesCount = 0;
             let fontSize = parseInt(localStorage.getItem('reader_font_size')) || 18;
             let isFullscreen = false;
             let isTwoPageMode = localStorage.getItem('reader_two_page_mode') === '1';
+            let bookPages = [];
+            let currentPosition = 0;
             
             // Инициализация
             fontSizeValue.textContent = fontSize;
@@ -312,17 +268,145 @@ $nextPageContent = isset($contentPages[$currentPage]) ? $contentPages[$currentPa
             document.body.classList.add('theme-' + savedTheme);
             document.querySelector(`.theme-option[data-theme="${savedTheme}"]`).classList.add('active');
             
-            // Если включен двухстраничный режим, активируем его
-            if (isTwoPageMode) {
-                toggleTwoPageMode();
-            }
+            // Инициализация страниц
+            initializePages();
             
             // Функции
+            function initializePages() {
+                // Получаем все содержимое книги
+                const bookContentHTML = currentPageElement.innerHTML;
+                
+                // Сохраняем оригинальное содержимое
+                currentPageElement.setAttribute('data-original-content', bookContentHTML);
+                
+                // Разбиваем книгу на страницы в зависимости от размера экрана
+                calculatePages();
+                
+                // Отображаем текущую страницу
+                showPage(currentPageIndex);
+                
+                // Обновляем информацию о страницах
+                updatePageInfo();
+                
+                // Если включен двухстраничный режим, применяем его
+                if (isTwoPageMode) {
+                    toggleTwoPageMode();
+                }
+            }
+            
+            function calculatePages() {
+                // Очищаем массив страниц
+                bookPages = [];
+                
+                // Получаем оригинальное содержимое
+                const originalContent = currentPageElement.getAttribute('data-original-content');
+                
+                // Создаем временный элемент для расчета страниц
+                const tempElement = document.createElement('div');
+                tempElement.style.position = 'absolute';
+                tempElement.style.visibility = 'hidden';
+                tempElement.style.width = currentPageElement.clientWidth + 'px';
+                tempElement.style.height = currentPageElement.clientHeight + 'px';
+                tempElement.style.fontSize = fontSize + 'px';
+                tempElement.style.overflow = 'hidden';
+                document.body.appendChild(tempElement);
+                
+                // Создаем DOM из оригинального содержимого
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(originalContent, 'text/html');
+                const paragraphs = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, div.title, div.subtitle');
+                
+                // Создаем первую страницу
+                let currentPageContent = '';
+                let currentPageHeight = 0;
+                const maxPageHeight = currentPageElement.clientHeight - 80; // Оставляем отступ
+                
+                // Проходим по всем параграфам
+                for (let i = 0; i < paragraphs.length; i++) {
+                    const paragraph = paragraphs[i];
+                    
+                    // Добавляем параграф во временный элемент для измерения высоты
+                    tempElement.innerHTML = paragraph.outerHTML;
+                    const paragraphHeight = tempElement.scrollHeight;
+                    
+                    // Если параграф не помещается на текущую страницу, создаем новую
+                    if (currentPageHeight > 0 && (currentPageHeight + paragraphHeight) > maxPageHeight) {
+                        bookPages.push(currentPageContent);
+                        currentPageContent = paragraph.outerHTML;
+                        currentPageHeight = paragraphHeight;
+                    } else {
+                        currentPageContent += paragraph.outerHTML;
+                        currentPageHeight += paragraphHeight;
+                    }
+                }
+                
+                // Добавляем последнюю страницу
+                if (currentPageContent) {
+                    bookPages.push(currentPageContent);
+                }
+                
+                // Удаляем временный элемент
+                document.body.removeChild(tempElement);
+                
+                // Обновляем общее количество страниц
+                totalPagesCount = bookPages.length;
+                totalPagesElement.textContent = totalPagesCount;
+                
+                // Если текущая страница больше общего количества, устанавливаем последнюю
+                if (currentPageIndex > totalPagesCount) {
+                    currentPageIndex = totalPagesCount;
+                }
+                
+                // Обновляем индикатор прогресса
+                updateProgressIndicator();
+            }
+            
+            function showPage(pageIndex) {
+                if (pageIndex < 1 || pageIndex > totalPagesCount) return;
+                
+                // Отображаем текущую страницу
+                currentPageElement.innerHTML = bookPages[pageIndex - 1] || '';
+                
+                // Отображаем следующую страницу (для двухстраничного режима)
+                if (pageIndex < totalPagesCount) {
+                    nextPageElement.innerHTML = bookPages[pageIndex] || '';
+                } else {
+                    nextPageElement.innerHTML = '';
+                }
+                
+                // Обновляем номер текущей страницы
+                currentPageNum.textContent = pageIndex;
+                currentPageIndex = pageIndex;
+                
+                // Обновляем индикатор прогресса
+                updateProgressIndicator();
+                
+                // Обновляем активный элемент в оглавлении
+                updateActiveTocItem();
+                
+                // Прокручиваем страницу в начало
+                window.scrollTo(0, 0);
+            }
+            
+            function goToPage(pageIndex) {
+                if (pageIndex < 1 || pageIndex > totalPagesCount) return;
+                
+                // Сохраняем прогресс перед переходом
+                saveProgress(false);
+                
+                // Отображаем новую страницу
+                showPage(pageIndex);
+            }
+            
             function updateFontSize() {
                 currentPageElement.style.fontSize = `${fontSize}px`;
                 nextPageElement.style.fontSize = `${fontSize}px`;
                 fontSizeValue.textContent = fontSize;
                 localStorage.setItem('reader_font_size', fontSize);
+                
+                // Пересчитываем страницы при изменении размера шрифта
+                calculatePages();
+                showPage(currentPageIndex);
             }
             
             function toggleTwoPageMode() {
@@ -345,10 +429,16 @@ $nextPageContent = isset($contentPages[$currentPage]) ? $contentPages[$currentPa
                 tocModal.classList.toggle('open');
             }
             
-            function goToPage(pageNum) {
-                if (pageNum < 1 || pageNum > totalPagesCount) return;
-                
-                window.location.href = `reader_fix.php?id=${bookId}&page=${pageNum}`;
+            function updateActiveTocItem() {
+                tocItems.forEach(item => {
+                    item.classList.remove('active');
+                    
+                    // Находим главу, соответствующую текущей странице
+                    const itemPage = parseInt(item.getAttribute('data-page'));
+                    if (itemPage === currentPageIndex) {
+                        item.classList.add('active');
+                    }
+                });
             }
             
             function saveProgress(showMessage = true) {
@@ -361,7 +451,7 @@ $nextPageContent = isset($contentPages[$currentPage]) ? $contentPages[$currentPa
                         user_id: userId,
                         book_id: bookId,
                         page: currentPageIndex,
-                        scroll_position: window.scrollY,
+                        scroll_position: window.pageYOffset || document.documentElement.scrollTop,
                         last_page_text: ''
                     })
                 })
@@ -380,10 +470,20 @@ $nextPageContent = isset($contentPages[$currentPage]) ? $contentPages[$currentPa
                 const percentage = Math.round((currentPageIndex / totalPagesCount) * 100);
                 progressFill.style.width = `${percentage}%`;
                 progressText.textContent = `${percentage}%`;
+            }
+            
+            function updatePageInfo() {
                 currentPageNum.textContent = currentPageIndex;
+                totalPagesElement.textContent = totalPagesCount;
             }
             
             // Обработчики событий
+            window.addEventListener('resize', function() {
+                // Пересчитываем страницы при изменении размера окна
+                calculatePages();
+                showPage(currentPageIndex);
+            });
+            
             backButton.addEventListener('click', function() {
                 saveProgress(false);
                 window.location.href = 'index.php';
@@ -546,9 +646,6 @@ $nextPageContent = isset($contentPages[$currentPage]) ? $contentPages[$currentPa
             
             // Автоматическое сохранение прогресса при загрузке страницы
             window.addEventListener('load', function() {
-                // Восстанавливаем позицию прокрутки
-                window.scrollTo(0, <?php echo $progress['scroll_position']; ?>);
-                
                 // Автоматически сохраняем прогресс
                 setTimeout(function() {
                     saveProgress(false);
