@@ -249,4 +249,87 @@ body.theme-dark .settings-modal h3 {
 body.theme-dark .font-size-btn {
     background-color: #444;
     color: #eee;
+}
+
+/* Двухстраничный режим */
+.two-page-mode .book-content {
+    display: flex;
+    flex-wrap: wrap;
+    max-width: 1600px;
+    justify-content: center;
+    gap: 40px;
+    padding: 20px 40px;
+}
+
+.two-page-mode .book-content .page {
+    width: calc(50% - 40px);
+    min-width: 300px;
+    height: calc(100vh - 150px);
+    overflow-y: hidden;
+    border: 1px solid #ddd;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    background-color: #fff;
+    transition: background-color 0.3s;
+}
+
+.two-page-mode.theme-sepia .book-content .page {
+    background-color: #f8f1e3;
+    border-color: #e8d8b9;
+}
+
+.two-page-mode.theme-dark .book-content .page {
+    background-color: #333;
+    border-color: #444;
+}
+
+/* Полноэкранный режим */
+.fullscreen-mode .reader-header,
+.fullscreen-mode .reader-footer {
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.fullscreen-mode:hover .reader-header,
+.fullscreen-mode:hover .reader-footer {
+    opacity: 1;
+}
+
+/* Кнопка переключения режима отображения */
+.layout-toggle {
+    display: flex;
+    align-items: center;
+    margin-left: 15px;
+}
+
+.layout-toggle-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #555;
+    transition: color 0.3s;
+}
+
+.layout-toggle-label {
+    font-size: 14px;
+    margin-left: 5px;
+    color: #777;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .two-page-mode .book-content {
+        flex-direction: column;
+    }
+    
+    .two-page-mode .book-content .page {
+        width: 100%;
+        height: auto;
+        min-height: calc(100vh - 150px);
+    }
+    
+    .layout-toggle {
+        display: none; /* Скрываем на мобильных устройствах */
+    }
 } 
