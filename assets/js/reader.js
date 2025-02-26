@@ -56,12 +56,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Сохранение позиции чтения
     function savePosition(position) {
+        const formData = new FormData();
+        formData.append('user_id', userId);
+        formData.append('book_id', bookId);
+        formData.append('position', position);
+        
         fetch('save_progress.php', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `user_id=${userId}&book_id=${bookId}&position=${position}`
+            body: formData
+        })
+        .catch(error => {
+            console.error('Ошибка при сохранении прогресса:', error);
         });
     }
     
