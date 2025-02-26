@@ -273,50 +273,53 @@ function getUserProgress($userId, $bookId) {
 function saveUserProgress($userId, $bookId, $page, $scrollPosition, $lastPageText = '') {
     global $db;
     
-    // Проверяем, существует ли запись о прогрессе
-    $sql = "SELECT id FROM user_progress 
-            WHERE user_id = :user_id AND book_id = :book_id";
-    
-    $result = $db->query($sql, [
-        ':user_id' => $userId,
-        ':book_id' => $bookId
-    ]);
-    
-    $progress = $result->fetch(PDO::FETCH_ASSOC);
-    
-    if ($progress) {
-        // Обновляем существующую запись
-        $sql = "UPDATE user_progress 
-                SET position = :position, page = :page, 
-                    scroll_position = :scroll_position, 
-                    last_page_text = :last_page_text,
-                    last_read = NOW() 
-                WHERE id = :id";
+    try {
+        // Проверяем, существует ли запись о прогрессе
+        $sql = "SELECT id FROM user_progress 
+                WHERE user_id = :user_id AND book_id = :book_id";
         
-        $db->query($sql, [
-            ':position' => $page * 1000 + $scrollPosition, // Для обратной совместимости
-            ':page' => $page,
-            ':scroll_position' => $scrollPosition,
-            ':last_page_text' => $lastPageText,
-            ':id' => $progress['id']
-        ]);
-    } else {
-        // Создаем новую запись
-        $sql = "INSERT INTO user_progress 
-                (user_id, book_id, position, page, scroll_position, last_page_text) 
-                VALUES (:user_id, :book_id, :position, :page, :scroll_position, :last_page_text)";
-        
-        $db->query($sql, [
+        $result = $db->query($sql, [
             ':user_id' => $userId,
-            ':book_id' => $bookId,
-            ':position' => $page * 1000 + $scrollPosition, // Для обратной совместимости
-            ':page' => $page,
-            ':scroll_position' => $scrollPosition,
-            ':last_page_text' => $lastPageText
+            ':book_id' => $bookId
         ]);
+        
+        $progress = $result->fetch(PDO::FETCH_ASSOC);
+        
+        if ($progress) {
+            // Обновляем существующую запись
+            $sql = "UPDATE user_progress 
+                    SET page = :page, 
+                        scroll_position = :scroll_position, 
+                        last_page_text = :last_page_text,
+                        last_read = NOW() 
+                    WHERE id = :id";
+            
+            $db->query($sql, [
+                ':page' => $page,
+                ':scroll_position' => $scrollPosition,
+                ':last_page_text' => $lastPageText,
+                ':id' => $progress['id']
+            ]);
+        } else {
+            // Создаем новую запись
+            $sql = "INSERT INTO user_progress 
+                    (user_id, book_id, page, scroll_position, last_page_text, last_read) 
+                    VALUES (:user_id, :book_id, :page, :scroll_position, :last_page_text, NOW())";
+            
+            $db->query($sql, [
+                ':user_id' => $userId,
+                ':book_id' => $bookId,
+                ':page' => $page,
+                ':scroll_position' => $scrollPosition,
+                ':last_page_text' => $lastPageText
+            ]);
+        }
+        
+        return true;
+    } catch (Exception $e) {
+        error_log("Error saving user progress: " . $e->getMessage());
+        throw $e;
     }
-    
-    return true;
 }
 
 function getUserDetailedProgress($userId, $bookId) {
