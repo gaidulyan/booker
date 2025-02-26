@@ -36,42 +36,42 @@ try {
     ];
 }
 
-// Разбиваем контент на страницы для двухстраничного режима
+// Разбиваем контент на страницы
 $contentPages = [];
 $dom = new DOMDocument();
 @$dom->loadHTML('<?xml encoding="UTF-8">' . $book['content']);
 $xpath = new DOMXPath($dom);
-$sections = $xpath->query('//div[@class="section"]');
+$paragraphs = $xpath->query('//p');
 
-if ($sections->length > 0) {
-    foreach ($sections as $section) {
-        $contentPages[] = $dom->saveHTML($section);
-    }
-} else {
-    // Если нет разделов, разбиваем по параграфам
-    $paragraphs = $xpath->query('//p');
-    $pageContent = '';
-    $paragraphCount = 0;
+// Разбиваем на страницы по параграфам
+$pageContent = '';
+$paragraphCount = 0;
+$wordsPerPage = 300; // Примерное количество слов на странице
+$wordCount = 0;
+
+foreach ($paragraphs as $paragraph) {
+    $paragraphText = $dom->saveHTML($paragraph);
+    $paragraphWords = str_word_count(strip_tags($paragraphText));
     
-    foreach ($paragraphs as $paragraph) {
-        $pageContent .= $dom->saveHTML($paragraph);
-        $paragraphCount++;
-        
-        if ($paragraphCount >= 10) { // Примерно 10 параграфов на страницу
-            $contentPages[] = '<div class="section">' . $pageContent . '</div>';
-            $pageContent = '';
-            $paragraphCount = 0;
-        }
+    // Если добавление этого параграфа превысит лимит слов на странице, создаем новую страницу
+    if ($wordCount > 0 && ($wordCount + $paragraphWords) > $wordsPerPage) {
+        $contentPages[] = '<div class="page-content">' . $pageContent . '</div>';
+        $pageContent = $paragraphText;
+        $wordCount = $paragraphWords;
+    } else {
+        $pageContent .= $paragraphText;
+        $wordCount += $paragraphWords;
     }
-    
-    if (!empty($pageContent)) {
-        $contentPages[] = '<div class="section">' . $pageContent . '</div>';
-    }
+}
+
+// Добавляем последнюю страницу, если есть контент
+if (!empty($pageContent)) {
+    $contentPages[] = '<div class="page-content">' . $pageContent . '</div>';
 }
 
 // Если страниц нет, используем весь контент как одну страницу
 if (empty($contentPages)) {
-    $contentPages[] = $book['content'];
+    $contentPages[] = '<div class="page-content">' . $book['content'] . '</div>';
 }
 
 // Определяем текущую страницу
@@ -83,6 +83,9 @@ if ($currentPage < 1 || $currentPage > count($contentPages)) {
 // Получаем содержимое текущей страницы и следующей (для двухстраничного режима)
 $currentPageContent = $contentPages[$currentPage - 1] ?? '';
 $nextPageContent = $contentPages[$currentPage] ?? '';
+
+// Общее количество страниц
+$totalPages = count($contentPages);
 ?>
 
 <!DOCTYPE html>
@@ -368,7 +371,7 @@ $nextPageContent = $contentPages[$currentPage] ?? '';
                 <button class="control-button" id="font-button" title="Настройки">
                     <i class="fas fa-font"></i>
                 </button>
-                <button class="control-button" id="fullscreen-button" title="Полноэкранный режим">
+                <button class="control-button" id="fullscreen-button" title="На весь экран">
                     <i class="fas fa-expand"></i>
                 </button>
             </div>
@@ -395,37 +398,38 @@ $nextPageContent = $contentPages[$currentPage] ?? '';
                     <i class="fas fa-chevron-left"></i>
                 </button>
                 <span class="pagination-info">
-                    Страница <span id="current-page-num"><?php echo $currentPage; ?></span> из <span id="total-pages"><?php echo count($contentPages); ?></span>
+                    <span id="current-page-num"><?php echo $currentPage; ?></span> из <span id="total-pages"><?php echo $totalPages; ?></span>
                 </span>
-                <button class="pagination-btn" id="next-page-btn" <?php if ($currentPage >= count($contentPages)) echo 'disabled'; ?>>
+                <button class="pagination-btn" id="next-page-btn" <?php if ($currentPage >= $totalPages) echo 'disabled'; ?>>
                     <i class="fas fa-chevron-right"></i>
                 </button>
             </div>
             
             <div class="progress-container">
+                <span class="progress-text"><?php echo round(($currentPage / $totalPages) * 100); ?>%</span>
                 <div class="progress-bar">
-                    <div class="progress-fill" id="progress-fill" style="width: <?php echo ($currentPage / count($contentPages)) * 100; ?>%;"></div>
-                </div>
-                <div class="progress-text">
-                    Прогресс: <span id="progress-percent"><?php echo round(($currentPage / count($contentPages)) * 100); ?></span>%
+                    <div class="progress-fill" style="width: <?php echo ($currentPage / $totalPages) * 100; ?>%;"></div>
                 </div>
             </div>
             
-            <button class="save-position-btn" id="save-position">Сохранить позицию</button>
+            <button class="control-button" id="save-button">
+                <i class="fas fa-save"></i> Сохранить позицию
+            </button>
         </footer>
         
         <!-- Модальное окно настроек -->
-        <div class="settings-modal" id="settings-modal" style="display: none;">
+        <div class="settings-modal" id="settings-modal">
             <h3>Настройки</h3>
             
             <div class="font-size-control">
+                <span>Размер шрифта</span>
                 <button class="font-size-btn" id="decrease-font">-</button>
-                <span id="font-size-value">18</span>
+                <span class="font-size-value" id="font-size-value">18</span>
                 <button class="font-size-btn" id="increase-font">+</button>
             </div>
             
-            <div class="theme-control">
-                <h4>Тема</h4>
+            <div>
+                <span>Тема</span>
                 <div class="theme-options">
                     <div class="theme-option theme-light active" data-theme="light"></div>
                     <div class="theme-option theme-sepia" data-theme="sepia"></div>
@@ -442,35 +446,54 @@ $nextPageContent = $contentPages[$currentPage] ?? '';
             const fontButton = document.getElementById('font-button');
             const fullscreenButton = document.getElementById('fullscreen-button');
             const layoutToggle = document.getElementById('layout-toggle');
+            const saveButton = document.getElementById('save-button');
+            const prevPageBtn = document.getElementById('prev-page');
+            const nextPageBtn = document.getElementById('next-page-btn');
+            const currentPageNum = document.getElementById('current-page-num');
+            const totalPages = document.getElementById('total-pages');
+            const progressFill = document.querySelector('.progress-fill');
+            const progressText = document.querySelector('.progress-text');
             const settingsModal = document.getElementById('settings-modal');
             const decreaseFontBtn = document.getElementById('decrease-font');
             const increaseFontBtn = document.getElementById('increase-font');
             const fontSizeValue = document.getElementById('font-size-value');
             const themeOptions = document.querySelectorAll('.theme-option');
-            const saveButton = document.getElementById('save-position');
             const bookContent = document.getElementById('book-content');
-            const currentPage = document.getElementById('current-page');
-            const nextPage = document.getElementById('next-page');
-            const prevPageBtn = document.getElementById('prev-page');
-            const nextPageBtn = document.getElementById('next-page-btn');
-            const currentPageNum = document.getElementById('current-page-num');
-            const totalPages = document.getElementById('total-pages');
-            const progressFill = document.getElementById('progress-fill');
-            const progressPercent = document.getElementById('progress-percent');
+            const currentPageElement = document.getElementById('current-page');
+            const nextPageElement = document.getElementById('next-page');
             
             // Переменные состояния
-            let fontSize = 18;
+            let currentPageIndex = <?php echo $currentPage; ?>;
+            let totalPagesCount = <?php echo $totalPages; ?>;
+            let fontSize = parseInt(localStorage.getItem('reader_font_size')) || 18;
             let isFullscreen = false;
             let isTwoPageMode = false;
-            let currentPageIndex = <?php echo $currentPage; ?>;
-            let totalPagesCount = <?php echo count($contentPages); ?>;
+            
+            // Инициализация
+            updateFontSize();
+            loadSavedTheme();
             
             // Функция обновления размера шрифта
             function updateFontSize() {
-                currentPage.style.fontSize = fontSize + 'px';
-                nextPage.style.fontSize = fontSize + 'px';
+                document.querySelectorAll('.page').forEach(page => {
+                    page.style.fontSize = fontSize + 'px';
+                });
                 fontSizeValue.textContent = fontSize;
                 localStorage.setItem('reader_font_size', fontSize);
+            }
+            
+            // Функция загрузки сохраненной темы
+            function loadSavedTheme() {
+                const savedTheme = localStorage.getItem('reader_theme') || 'light';
+                document.body.classList.add('theme-' + savedTheme);
+                
+                themeOptions.forEach(option => {
+                    if (option.getAttribute('data-theme') === savedTheme) {
+                        option.classList.add('active');
+                    } else {
+                        option.classList.remove('active');
+                    }
+                });
             }
             
             // Функция переключения двухстраничного режима
@@ -481,21 +504,34 @@ $nextPageContent = $contentPages[$currentPage] ?? '';
                     bookContent.classList.remove('single-page-mode');
                     bookContent.classList.add('two-page-mode');
                     document.body.classList.add('two-page-mode');
-                    nextPage.style.display = 'block';
+                    nextPageElement.style.display = 'block';
                     layoutToggle.innerHTML = '<i class="fas fa-book-open"></i>';
                 } else {
                     bookContent.classList.add('single-page-mode');
                     bookContent.classList.remove('two-page-mode');
                     document.body.classList.remove('two-page-mode');
-                    nextPage.style.display = 'none';
+                    nextPageElement.style.display = 'none';
                     layoutToggle.innerHTML = '<i class="fas fa-columns"></i>';
                 }
                 
                 localStorage.setItem('reader_two_page_mode', isTwoPageMode ? '1' : '0');
             }
             
+            // Функция перехода на страницу
+            function goToPage(pageNum) {
+                if (pageNum < 1 || pageNum > totalPagesCount) return;
+                
+                // Сохраняем текущую позицию перед переходом
+                saveProgress(false);
+                
+                // Переходим на новую страницу
+                window.location.href = `reader_fix.php?id=<?php echo $bookId; ?>&page=${pageNum}`;
+            }
+            
             // Функция сохранения прогресса
-            function saveProgress(showAlert = true) {
+            function saveProgress(showMessage = false) {
+                const scrollPosition = window.scrollY;
+                
                 fetch('save_progress.php', {
                     method: 'POST',
                     headers: {
@@ -505,66 +541,20 @@ $nextPageContent = $contentPages[$currentPage] ?? '';
                         user_id: <?php echo $_SESSION['user_id']; ?>,
                         book_id: <?php echo $bookId; ?>,
                         page: currentPageIndex,
-                        scroll_position: window.scrollY,
-                        last_page_text: currentPage.textContent.substring(0, 100)
+                        scroll_position: scrollPosition,
+                        last_page_text: currentPageElement.textContent.substring(0, 100)
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (showAlert) {
+                    if (showMessage) {
                         alert('Позиция сохранена!');
                     }
                 })
                 .catch(error => {
                     console.error('Ошибка:', error);
-                    if (showAlert) {
+                    if (showMessage) {
                         alert('Не удалось сохранить позицию.');
-                    }
-                });
-            }
-            
-            // Функция перехода на страницу
-            function goToPage(pageIndex) {
-                if (pageIndex < 1 || pageIndex > totalPagesCount) {
-                    return;
-                }
-                
-                // Сохраняем текущую позицию
-                saveProgress(false);
-                
-                // Обновляем URL
-                const newUrl = new URL(window.location.href);
-                newUrl.searchParams.set('page', pageIndex);
-                window.history.pushState({page: pageIndex}, '', newUrl);
-                
-                // Загружаем новую страницу
-                window.location.href = newUrl.toString();
-            }
-            
-            // Инициализация
-            
-            // Загрузка сохраненного размера шрифта
-            if (localStorage.getItem('reader_font_size')) {
-                fontSize = parseInt(localStorage.getItem('reader_font_size'));
-                updateFontSize();
-            }
-            
-            // Загрузка сохраненного режима отображения
-            if (localStorage.getItem('reader_two_page_mode') === '1') {
-                toggleTwoPageMode();
-            }
-            
-            // Загрузка сохраненной темы
-            if (localStorage.getItem('reader_theme')) {
-                const savedTheme = localStorage.getItem('reader_theme');
-                document.body.classList.remove('theme-light', 'theme-sepia', 'theme-dark');
-                document.body.classList.add('theme-' + savedTheme);
-                
-                themeOptions.forEach(option => {
-                    if (option.getAttribute('data-theme') === savedTheme) {
-                        option.classList.add('active');
-                    } else {
-                        option.classList.remove('active');
                     }
                 });
             }
@@ -699,17 +689,23 @@ $nextPageContent = $contentPages[$currentPage] ?? '';
                 }
             });
             
-            // Автоматическое сохранение прогресса при прокрутке
-            let scrollTimeout;
-            window.addEventListener('scroll', function() {
-                clearTimeout(scrollTimeout);
-                scrollTimeout = setTimeout(function() {
+            // Автоматическое сохранение прогресса при загрузке страницы
+            window.addEventListener('load', function() {
+                // Восстанавливаем режим отображения
+                if (localStorage.getItem('reader_two_page_mode') === '1') {
+                    toggleTwoPageMode();
+                }
+                
+                // Автоматически сохраняем прогресс
+                setTimeout(function() {
                     saveProgress(false);
-                }, 1000);
+                }, 2000);
             });
             
-            // Восстановление позиции прокрутки
-            window.scrollTo(0, <?php echo $progress['scroll_position']; ?>);
+            // Автоматическое сохранение прогресса перед закрытием страницы
+            window.addEventListener('beforeunload', function() {
+                saveProgress(false);
+            });
         });
     </script>
 </body>
