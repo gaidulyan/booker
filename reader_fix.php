@@ -357,6 +357,7 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                 setTheme('sepia');
             });
             
+            // Обработчики для кнопок навигации
             prevPageBtn.addEventListener('click', function() {
                 if (currentPageIndex > 1) {
                     goToPage(currentPageIndex - 1);
@@ -369,6 +370,7 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                 }
             });
             
+            // Обработчики для областей перемотки страниц
             prevPageArea.addEventListener('click', function() {
                 if (currentPageIndex > 1) {
                     goToPage(currentPageIndex - 1);
@@ -585,10 +587,25 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                     }
                 } else {
                     // Иначе переходим к виртуальной странице
-                    const virtualPageIndex = pageIndex - <?php echo $totalChapters; ?>;
+                    // Вычисляем индекс виртуальной страницы (отсчет от 0)
+                    const virtualPageIndex = pageIndex - <?php echo $totalChapters; ?> - 1;
+                    
+                    console.log('Переход к виртуальной странице:', virtualPageIndex + 1);
+                    console.log('Всего виртуальных страниц:', virtualPages.length);
+                    
                     if (virtualPageIndex >= 0 && virtualPageIndex < virtualPages.length) {
+                        // Находим первый элемент на странице
                         const firstElement = virtualPages[virtualPageIndex][0];
-                        firstElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        
+                        // Прокручиваем к этому элементу
+                        if (firstElement) {
+                            console.log('Прокрутка к элементу:', firstElement);
+                            firstElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        } else {
+                            console.error('Элемент не найден для виртуальной страницы', virtualPageIndex + 1);
+                        }
+                    } else {
+                        console.error('Некорректный индекс виртуальной страницы:', virtualPageIndex + 1);
                     }
                 }
                 
@@ -731,6 +748,14 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                 console.log('Виртуальные страницы инициализированы. Всего страниц: ' + totalPagesCount);
                 console.log('Количество глав: ' + <?php echo $totalChapters; ?>);
                 console.log('Количество виртуальных страниц: ' + virtualPages.length);
+                
+                // Выводим информацию о каждой виртуальной странице
+                virtualPages.forEach((page, index) => {
+                    console.log(`Виртуальная страница ${index + 1} содержит ${page.length} элементов`);
+                    if (page.length > 0) {
+                        console.log('Первый элемент:', page[0]);
+                    }
+                });
             }
         });
     </script>
