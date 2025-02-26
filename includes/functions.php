@@ -145,8 +145,30 @@ function saveBook($bookData, $filePath) {
     error_log("Автор: " . $author);
     
     try {
+        // Проверяем, не существует ли уже такая книга
+        $checkSql = "SELECT id FROM books WHERE title = :title AND author = :author LIMIT 1";
+        $checkResult = $db->query($checkSql, [
+            ':title' => $title,
+            ':author' => $author
+        ]);
+        
+        $existingBook = $checkResult->fetch(PDO::FETCH_ASSOC);
+        if ($existingBook) {
+            return $existingBook['id']; // Возвращаем ID существующей книги
+        }
+        
+        // Если книги нет, добавляем новую
         $sql = "INSERT INTO books (title, author, file_path, content, cover_image) 
                 VALUES (:title, :author, :file_path, :content, :cover_image)";
+        
+        // Обрезаем слишком длинные значения
+        if (strlen($title) > 250) {
+            $title = mb_substr($title, 0, 250, 'UTF-8');
+        }
+        
+        if (strlen($author) > 250) {
+            $author = mb_substr($author, 0, 250, 'UTF-8');
+        }
         
         $params = [
             ':title' => $title,
