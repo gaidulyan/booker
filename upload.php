@@ -1,6 +1,12 @@
 <?php
 session_start();
-require_once 'includes/functions.php';
+
+// Проверяем наличие расширения mbstring
+if (function_exists('mb_detect_encoding')) {
+    require_once 'includes/functions.php';
+} else {
+    require_once 'includes/functions_no_mbstring.php';
+}
 
 // Временно установим user_id = 1 для демонстрации
 if (!isset($_SESSION['user_id'])) {
