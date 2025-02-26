@@ -11,6 +11,12 @@ function parseBookFB2($filePath) {
         throw new Exception("Не удалось прочитать содержимое файла: $filePath");
     }
     
+    // Определение кодировки файла и преобразование в UTF-8 если нужно
+    $encoding = mb_detect_encoding($content, ['UTF-8', 'Windows-1251', 'KOI8-R'], true);
+    if ($encoding && $encoding !== 'UTF-8') {
+        $content = mb_convert_encoding($content, 'UTF-8', $encoding);
+    }
+    
     // Проверка на валидность XML
     libxml_use_internal_errors(true);
     $xml = simplexml_load_string($content);
@@ -129,19 +135,33 @@ function convertFB2ToHTML($body, $ns) {
 function saveBook($bookData, $filePath) {
     global $db;
     
-    $sql = "INSERT INTO books (title, author, file_path, content, cover_image) 
-            VALUES (:title, :author, :file_path, :content, :cover_image)";
+    // Проверка и очистка данных перед сохранением
+    $title = mb_convert_encoding($bookData['title'], 'UTF-8', 'auto');
+    $author = mb_convert_encoding($bookData['author'], 'UTF-8', 'auto');
+    $content = mb_convert_encoding($bookData['content'], 'UTF-8', 'auto');
     
-    $params = [
-        ':title' => $bookData['title'],
-        ':author' => $bookData['author'],
-        ':file_path' => $filePath,
-        ':content' => $bookData['content'],
-        ':cover_image' => $bookData['cover_image']
-    ];
+    // Логирование для отладки
+    error_log("Сохранение книги: " . $title);
+    error_log("Автор: " . $author);
     
-    $db->query($sql, $params);
-    return $db->lastInsertId();
+    try {
+        $sql = "INSERT INTO books (title, author, file_path, content, cover_image) 
+                VALUES (:title, :author, :file_path, :content, :cover_image)";
+        
+        $params = [
+            ':title' => $title,
+            ':author' => $author,
+            ':file_path' => $filePath,
+            ':content' => $content,
+            ':cover_image' => $bookData['cover_image']
+        ];
+        
+        $db->query($sql, $params);
+        return $db->lastInsertId();
+    } catch (PDOException $e) {
+        error_log("Ошибка SQL при сохранении книги: " . $e->getMessage());
+        throw new Exception("Ошибка при сохранении книги в базу данных: " . $e->getMessage());
+    }
 }
 
 function getBook($bookId) {
