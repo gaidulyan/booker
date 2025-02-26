@@ -419,14 +419,19 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                 // Получаем текущую позицию прокрутки
                 const scrollPosition = window.scrollY || document.documentElement.scrollTop;
                 
+                // Получаем текущий процент прокрутки
+                const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+                const scrollPercentage = scrollHeight > 0 ? (scrollPosition / scrollHeight) * 100 : 0;
+                
+                // Сохраняем прогресс на сервере
                 fetch('save_progress.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        user_id: userId,
-                        book_id: bookId,
+                        user_id: <?php echo $_SESSION['user_id']; ?>,
+                        book_id: <?php echo $bookId; ?>,
                         page: <?php echo $currentPage; ?>,
                         scroll_position: scrollPosition,
                         last_page_text: ''
@@ -435,7 +440,7 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                 .then(response => response.json())
                 .then(data => {
                     if (showMessage && data.success) {
-                        alert('Позиция сохранена!');
+                        alert('Прогресс сохранен!');
                     }
                 })
                 .catch(error => {
@@ -447,8 +452,10 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                 // Получаем текущую позицию прокрутки
                 const scrollPosition = window.scrollY || document.documentElement.scrollTop;
                 
-                // Получаем текущий процент прокрутки
+                // Получаем общую высоту прокрутки
                 const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+                
+                // Вычисляем процент прокрутки
                 const scrollPercentage = scrollHeight > 0 ? (scrollPosition / scrollHeight) * 100 : 0;
                 
                 // Обновляем индикатор прогресса
@@ -457,7 +464,6 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
             }
             
             function updatePageInfo() {
-                // Обновляем информацию о страницах
                 currentPageNum.textContent = <?php echo $currentPage; ?>;
                 totalPagesElement.textContent = <?php echo $totalChapters; ?>;
             }
@@ -846,6 +852,64 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
             let virtualPages = [];
             let currentPageIndex = <?php echo $currentPage; ?>;
             let totalPagesCount = 1;
+            
+            // Добавляем обработчики для перемотки страниц с помощью свайпов на мобильных устройствах
+            let touchStartX = 0;
+            let touchEndX = 0;
+            
+            document.addEventListener('touchstart', function(event) {
+                touchStartX = event.changedTouches[0].screenX;
+            }, false);
+            
+            document.addEventListener('touchend', function(event) {
+                touchEndX = event.changedTouches[0].screenX;
+                handleSwipe();
+            }, false);
+            
+            function handleSwipe() {
+                const swipeThreshold = 100; // Минимальное расстояние для свайпа
+                
+                if (touchEndX < touchStartX - swipeThreshold) {
+                    // Свайп влево - следующая страница
+                    if (currentPageIndex < totalPagesCount) {
+                        goToPage(currentPageIndex + 1);
+                    }
+                }
+                
+                if (touchEndX > touchStartX + swipeThreshold) {
+                    // Свайп вправо - предыдущая страница
+                    if (currentPageIndex > 1) {
+                        goToPage(currentPageIndex - 1);
+                    }
+                }
+            }
+            
+            // Добавляем обработчики для перемотки страниц с помощью колеса мыши
+            let wheelTimeout;
+            document.addEventListener('wheel', function(event) {
+                clearTimeout(wheelTimeout);
+                
+                wheelTimeout = setTimeout(function() {
+                    // Определяем направление прокрутки
+                    const direction = event.deltaY > 0 ? 1 : -1;
+                    
+                    // Если прокрутка достигла края страницы, переходим к следующей/предыдущей странице
+                    const isAtTop = window.scrollY === 0;
+                    const isAtBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 10;
+                    
+                    if (direction > 0 && isAtBottom) {
+                        // Прокрутка вниз и достигнут конец страницы - следующая страница
+                        if (currentPageIndex < totalPagesCount) {
+                            goToPage(currentPageIndex + 1);
+                        }
+                    } else if (direction < 0 && isAtTop) {
+                        // Прокрутка вверх и достигнуто начало страницы - предыдущая страница
+                        if (currentPageIndex > 1) {
+                            goToPage(currentPageIndex - 1);
+                        }
+                    }
+                }, 100);
+            }, { passive: true });
         });
     </script>
 </body>
