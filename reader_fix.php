@@ -418,8 +418,36 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                                 }
                             });
                             
+                            // Находим виртуальную страницу, на которой находится глава
+                            let pageIndex = 1;
+                            for (let i = 0; i < this.state.virtualPages.length; i++) {
+                                if (this.state.virtualPages[i].some(element => element === chapterElement || element.contains(chapterElement))) {
+                                    pageIndex = i + 1;
+                                    break;
+                                }
+                            }
+                            
+                            // Обновляем текущую страницу
+                            this.state.currentPageIndex = pageIndex;
+                            
+                            // Обновляем URL без перезагрузки страницы
+                            const url = new URL(window.location.href);
+                            url.searchParams.set('page', pageIndex);
+                            url.searchParams.set('chapter', chapterNum);
+                            window.history.pushState({ page: pageIndex, chapter: chapterNum }, '', url.toString());
+                            
+                            // Обновляем информацию о страницах
+                            this.updatePageInfo();
+                            
                             // Обновляем индикатор прогресса
-                            this.updateProgressIndicator();
+                            setTimeout(function() {
+                                this.updateProgressIndicator();
+                            }.bind(this), 500);
+                            
+                            // Сохраняем прогресс
+                            setTimeout(function() {
+                                this.saveProgress(false);
+                            }.bind(this), 1000);
                         }
                     };
                     
