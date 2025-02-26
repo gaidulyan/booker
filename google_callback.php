@@ -70,8 +70,11 @@ try {
     $_SESSION['username'] = $name;
     $_SESSION['email'] = $email;
     
-    // Перенаправляем на главную страницу
-    header('Location: index.php');
+    // Перенаправляем на главную страницу или на страницу, с которой пришли
+    $redirect = $_SESSION['redirect_after_login'] ?? 'index.php';
+    unset($_SESSION['redirect_after_login']);
+    
+    header("Location: $redirect");
     exit;
     
 } catch (Exception $e) {

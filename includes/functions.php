@@ -367,4 +367,62 @@ function getAllBooks() {
     
     return $result->fetchAll(PDO::FETCH_ASSOC);
 }
+
+function repairBook($bookId) {
+    global $db;
+    
+    // Получаем информацию о книге
+    $sql = "SELECT * FROM books WHERE id = :id";
+    $result = $db->query($sql, [':id' => $bookId]);
+    $book = $result->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$book) {
+        return false;
+    }
+    
+    // Проверяем содержимое книги
+    if (empty($book['content']) || $book['content'] == '<div class="section"><p>Содержимое книги не удалось извлечь или оно отсутствует.</p></div>') {
+        // Пытаемся заново обработать файл
+        $filePath = UPLOAD_DIR . $book['file_path'];
+        
+        if (file_exists($filePath)) {
+            try {
+                // Парсим FB2 файл заново
+                $bookData = parseBookFB2($filePath);
+                
+                // Обновляем данные книги
+                $sql = "UPDATE books SET 
+                        title = :title, 
+                        author = :author, 
+                        content = :content, 
+                        cover_image = :cover_image 
+                        WHERE id = :id";
+                
+                $db->query($sql, [
+                    ':title' => $bookData['title'],
+                    ':author' => $bookData['author'],
+                    ':content' => $bookData['content'],
+                    ':cover_image' => $bookData['cover_image'],
+                    ':id' => $bookId
+                ]);
+                
+                return true;
+            } catch (Exception $e) {
+                // Если не удалось обработать, создаем простое содержимое
+                $sql = "UPDATE books SET 
+                        content = :content 
+                        WHERE id = :id";
+                
+                $db->query($sql, [
+                    ':content' => '<div class="section"><p>Не удалось обработать книгу. Ошибка: ' . $e->getMessage() . '</p></div>',
+                    ':id' => $bookId
+                ]);
+                
+                return false;
+            }
+        }
+    }
+    
+    return true;
+}
 ?> 

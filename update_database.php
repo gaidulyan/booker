@@ -6,18 +6,47 @@ try {
     
     echo "<h2>Обновление структуры базы данных</h2>";
     
-    // Добавляем поле google_id в таблицу users
-    $conn->exec("ALTER TABLE users ADD COLUMN google_id VARCHAR(100) NULL");
-    $conn->exec("ALTER TABLE users ADD COLUMN last_login TIMESTAMP NULL");
+    // Проверяем наличие колонки google_id в таблице users
+    $result = $conn->query("SHOW COLUMNS FROM users LIKE 'google_id'");
+    if ($result->rowCount() == 0) {
+        $conn->exec("ALTER TABLE users ADD COLUMN google_id VARCHAR(100) NULL");
+        echo "Добавлена колонка google_id в таблицу users.<br>";
+    }
     
-    echo "Таблица users обновлена для поддержки Google OAuth.<br>";
+    // Проверяем наличие колонки last_login в таблице users
+    $result = $conn->query("SHOW COLUMNS FROM users LIKE 'last_login'");
+    if ($result->rowCount() == 0) {
+        $conn->exec("ALTER TABLE users ADD COLUMN last_login TIMESTAMP NULL");
+        echo "Добавлена колонка last_login в таблицу users.<br>";
+    }
     
-    // Обновляем таблицу user_progress для хранения позиции чтения
-    $conn->exec("ALTER TABLE user_progress ADD COLUMN page INT DEFAULT 1");
-    $conn->exec("ALTER TABLE user_progress ADD COLUMN scroll_position INT DEFAULT 0");
-    $conn->exec("ALTER TABLE user_progress ADD COLUMN last_page_text VARCHAR(255) NULL");
+    // Проверяем наличие колонки page в таблице user_progress
+    $result = $conn->query("SHOW COLUMNS FROM user_progress LIKE 'page'");
+    if ($result->rowCount() == 0) {
+        $conn->exec("ALTER TABLE user_progress ADD COLUMN page INT DEFAULT 1");
+        echo "Добавлена колонка page в таблицу user_progress.<br>";
+    }
     
-    echo "Таблица user_progress обновлена для хранения позиции чтения.<br>";
+    // Проверяем наличие колонки scroll_position в таблице user_progress
+    $result = $conn->query("SHOW COLUMNS FROM user_progress LIKE 'scroll_position'");
+    if ($result->rowCount() == 0) {
+        $conn->exec("ALTER TABLE user_progress ADD COLUMN scroll_position INT DEFAULT 0");
+        echo "Добавлена колонка scroll_position в таблицу user_progress.<br>";
+    }
+    
+    // Проверяем наличие колонки last_page_text в таблице user_progress
+    $result = $conn->query("SHOW COLUMNS FROM user_progress LIKE 'last_page_text'");
+    if ($result->rowCount() == 0) {
+        $conn->exec("ALTER TABLE user_progress ADD COLUMN last_page_text VARCHAR(255) NULL");
+        echo "Добавлена колонка last_page_text в таблицу user_progress.<br>";
+    }
+    
+    // Проверяем наличие колонки last_read в таблице user_progress
+    $result = $conn->query("SHOW COLUMNS FROM user_progress LIKE 'last_read'");
+    if ($result->rowCount() == 0) {
+        $conn->exec("ALTER TABLE user_progress ADD COLUMN last_read TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+        echo "Добавлена колонка last_read в таблицу user_progress.<br>";
+    }
     
     echo "<br>База данных успешно обновлена!";
     

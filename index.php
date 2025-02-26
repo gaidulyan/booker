@@ -48,7 +48,7 @@ try {
                     <li><a href="index.php">Главная</a></li>
                     <?php if (isset($_SESSION['user_id'])): ?>
                         <li><a href="upload.php">Загрузить книгу</a></li>
-                        <li><a href="repair_books.php">Проверка книг</a></li>
+                        <li><a href="simple_repair.php">Управление книгами</a></li>
                         <li><a href="logout.php">Выход (<?php echo htmlspecialchars($_SESSION['username']); ?>)</a></li>
                     <?php else: ?>
                         <li><a href="login.php">Вход</a></li>
@@ -84,7 +84,7 @@ try {
                                     <p class="author"><?php echo htmlspecialchars($book['author']); ?></p>
                                     <p class="last-read">Последнее чтение: <?php echo date('d.m.Y H:i', strtotime($book['last_read'])); ?></p>
                                     <p class="progress">Страница: <?php echo $book['page']; ?></p>
-                                    <a href="reader.php?id=<?php echo $book['id']; ?>" class="btn">Продолжить чтение</a>
+                                    <a href="reader_fix.php?id=<?php echo $book['id']; ?>" class="btn">Продолжить чтение</a>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -110,7 +110,7 @@ try {
                                 <div class="book-info">
                                     <h3><?php echo htmlspecialchars($book['title']); ?></h3>
                                     <p class="author"><?php echo htmlspecialchars($book['author']); ?></p>
-                                    <a href="reader.php?id=<?php echo $book['id']; ?>" class="btn">Читать</a>
+                                    <a href="reader_fix.php?id=<?php echo $book['id']; ?>" class="btn">Читать</a>
                                 </div>
                             </div>
                         <?php endforeach; ?>
