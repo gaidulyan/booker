@@ -298,6 +298,9 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
             let isFullscreen = false;
             let touchStartX = 0;
             let touchEndX = 0;
+            let scrollTimeout;
+            let resizeTimeout;
+            let wheelTimeout;
             
             // Обработчики событий
             backButton.addEventListener('click', function() {
@@ -394,10 +397,14 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
             
             // Функция для обновления размера шрифта
             function updateFontSize() {
-                currentPageElement.style.fontSize = `${fontSize}px`;
-                nextPageElement.style.fontSize = `${fontSize}px`;
+                document.body.style.fontSize = fontSize + 'px';
                 fontSizeValue.textContent = fontSize;
                 localStorage.setItem('reader_font_size', fontSize);
+                
+                // Пересчитываем виртуальные страницы при изменении размера шрифта
+                setTimeout(function() {
+                    initializeVirtualPages();
+                }, 300);
             }
             
             // Функция для установки темы
@@ -576,9 +583,9 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                             }
                         });
                     }
-                } else if (virtualPages.length > 0) {
+                } else {
                     // Иначе переходим к виртуальной странице
-                    const virtualPageIndex = pageIndex - <?php echo $totalChapters; ?> - 1;
+                    const virtualPageIndex = pageIndex - <?php echo $totalChapters; ?>;
                     if (virtualPageIndex >= 0 && virtualPageIndex < virtualPages.length) {
                         const firstElement = virtualPages[virtualPageIndex][0];
                         firstElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -645,7 +652,7 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                 }
             });
             
-            // Инициализация
+            // Восстанавливаем настройки
             updateFontSize();
             setTheme(currentTheme);
             
@@ -655,6 +662,9 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
             
             // Восстанавливаем позицию прокрутки
             window.scrollTo(0, <?php echo $progress['scroll_position']; ?>);
+            
+            // Инициализация виртуальных страниц
+            initializeVirtualPages();
             
             // Обновляем индикатор прогресса
             updateProgressIndicator();
@@ -670,6 +680,14 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
             if (chapterId) {
                 goToChapter('chapter_' + chapterId);
             }
+            
+            // Добавляем обработчик изменения размера окна
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(function() {
+                    initializeVirtualPages();
+                }, 300);
+            });
             
             // Функция для разбиения книги на виртуальные страницы
             function initializeVirtualPages() {
@@ -704,27 +722,15 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                 }
                 
                 // Обновляем общее количество страниц
-                // Используем максимальное значение между количеством глав и виртуальных страниц
-                totalPagesCount = Math.max(<?php echo $totalChapters; ?>, virtualPages.length);
-                
-                // Определяем текущую страницу на основе прокрутки
-                const scrollPosition = window.scrollY || document.documentElement.scrollTop;
-                
-                // Находим текущую виртуальную страницу на основе прокрутки
-                let accumulatedHeight = 0;
-                for (let i = 0; i < virtualPages.length; i++) {
-                    const pageHeight = virtualPages[i].reduce((sum, element) => sum + element.offsetHeight, 0);
-                    
-                    if (accumulatedHeight + pageHeight > scrollPosition) {
-                        currentPageIndex = i + 1;
-                        break;
-                    }
-                    
-                    accumulatedHeight += pageHeight;
-                }
+                // Используем сумму количества глав и виртуальных страниц
+                totalPagesCount = <?php echo $totalChapters; ?> + virtualPages.length;
                 
                 // Обновляем информацию о страницах
                 updatePageInfo();
+                
+                console.log('Виртуальные страницы инициализированы. Всего страниц: ' + totalPagesCount);
+                console.log('Количество глав: ' + <?php echo $totalChapters; ?>);
+                console.log('Количество виртуальных страниц: ' + virtualPages.length);
             }
         });
     </script>
