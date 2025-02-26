@@ -11,46 +11,79 @@ $message = '';
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_FILES['book']) && $_FILES['book']['error'] === UPLOAD_ERR_OK) {
+    if (isset($_FILES['book'])) {
         $file = $_FILES['book'];
         
-        // Проверка размера файла
-        if ($file['size'] > MAX_FILE_SIZE) {
-            $error = 'Файл слишком большой. Максимальный размер: ' . (MAX_FILE_SIZE / 1024 / 1024) . 'MB';
-        }
-        
-        // Проверка типа файла
-        $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if ($fileExt !== 'fb2') {
-            $error = 'Поддерживаются только файлы формата FB2';
-        }
-        
-        if (empty($error)) {
-            // Создаем директорию для загрузок, если она не существует
-            if (!file_exists(UPLOAD_DIR)) {
-                mkdir(UPLOAD_DIR, 0755, true);
+        // Проверка на ошибки загрузки
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            switch ($file['error']) {
+                case UPLOAD_ERR_INI_SIZE:
+                    $error = 'Размер файла превышает значение upload_max_filesize в php.ini';
+                    break;
+                case UPLOAD_ERR_FORM_SIZE:
+                    $error = 'Размер файла превышает значение MAX_FILE_SIZE в HTML-форме';
+                    break;
+                case UPLOAD_ERR_PARTIAL:
+                    $error = 'Файл был загружен только частично';
+                    break;
+                case UPLOAD_ERR_NO_FILE:
+                    $error = 'Файл не был загружен';
+                    break;
+                case UPLOAD_ERR_NO_TMP_DIR:
+                    $error = 'Отсутствует временная директория';
+                    break;
+                case UPLOAD_ERR_CANT_WRITE:
+                    $error = 'Не удалось записать файл на диск';
+                    break;
+                case UPLOAD_ERR_EXTENSION:
+                    $error = 'Загрузка файла была остановлена расширением PHP';
+                    break;
+                default:
+                    $error = 'Неизвестная ошибка при загрузке файла';
+            }
+        } else {
+            // Проверка размера файла
+            if ($file['size'] > MAX_FILE_SIZE) {
+                $error = 'Файл слишком большой. Максимальный размер: ' . (MAX_FILE_SIZE / 1024 / 1024) . 'MB';
             }
             
-            // Генерируем уникальное имя файла
-            $fileName = uniqid() . '.fb2';
-            $filePath = UPLOAD_DIR . $fileName;
+            // Проверка типа файла
+            $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            if ($fileExt !== 'fb2') {
+                $error = 'Поддерживаются только файлы формата FB2';
+            }
             
-            if (move_uploaded_file($file['tmp_name'], $filePath)) {
-                try {
-                    // Парсим FB2 файл
-                    $bookData = parseBookFB2($filePath);
-                    
-                    // Сохраняем книгу в базу данных
-                    $bookId = saveBook($bookData, $fileName);
-                    
-                    $message = 'Книга успешно загружена! <a href="reader.php?id=' . $bookId . '">Читать сейчас</a>';
-                } catch (Exception $e) {
-                    $error = 'Ошибка при обработке файла: ' . $e->getMessage();
-                    // Удаляем загруженный файл в случае ошибки
-                    unlink($filePath);
+            if (empty($error)) {
+                // Создаем директорию для загрузок, если она не существует
+                if (!file_exists(UPLOAD_DIR)) {
+                    if (!mkdir(UPLOAD_DIR, 0755, true)) {
+                        $error = 'Не удалось создать директорию для загрузки файлов';
+                    }
                 }
-            } else {
-                $error = 'Ошибка при загрузке файла';
+                
+                if (empty($error)) {
+                    // Генерируем уникальное имя файла
+                    $fileName = uniqid() . '.fb2';
+                    $filePath = UPLOAD_DIR . $fileName;
+                    
+                    if (move_uploaded_file($file['tmp_name'], $filePath)) {
+                        try {
+                            // Парсим FB2 файл
+                            $bookData = parseBookFB2($filePath);
+                            
+                            // Сохраняем книгу в базу данных
+                            $bookId = saveBook($bookData, $fileName);
+                            
+                            $message = 'Книга успешно загружена! <a href="reader.php?id=' . $bookId . '">Читать сейчас</a>';
+                        } catch (Exception $e) {
+                            $error = 'Ошибка при обработке файла: ' . $e->getMessage();
+                            // Удаляем загруженный файл в случае ошибки
+                            @unlink($filePath);
+                        }
+                    } else {
+                        $error = 'Ошибка при перемещении загруженного файла. Проверьте права доступа к директории uploads.';
+                    }
+                }
             }
         }
     } else {
@@ -95,6 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="form-group">
                         <label for="book">Выберите FB2 файл:</label>
                         <input type="file" id="book" name="book" accept=".fb2" required>
+                        <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo MAX_FILE_SIZE; ?>">
                     </div>
                     
                     <div class="form-group">

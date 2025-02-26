@@ -2,7 +2,14 @@
 require_once 'db.php';
 
 function parseBookFB2($filePath) {
+    if (!file_exists($filePath)) {
+        throw new Exception("Файл не найден: $filePath");
+    }
+    
     $content = file_get_contents($filePath);
+    if ($content === false) {
+        throw new Exception("Не удалось прочитать содержимое файла: $filePath");
+    }
     
     // Проверка на валидность XML
     libxml_use_internal_errors(true);
@@ -11,7 +18,13 @@ function parseBookFB2($filePath) {
     if (!$xml) {
         $errors = libxml_get_errors();
         libxml_clear_errors();
-        throw new Exception("Ошибка парсинга FB2 файла: " . $errors[0]->message);
+        $errorMsg = "Ошибка парсинга FB2 файла: ";
+        if (!empty($errors)) {
+            $errorMsg .= $errors[0]->message . " в строке " . $errors[0]->line;
+        } else {
+            $errorMsg .= "неизвестная ошибка XML";
+        }
+        throw new Exception($errorMsg);
     }
     
     // Регистрация пространства имен FB2
