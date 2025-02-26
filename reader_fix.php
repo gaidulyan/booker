@@ -262,16 +262,22 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
             // Получаем элементы DOM
             const backButton = document.getElementById('back-button');
             const tocButton = document.getElementById('toc-button');
+            const tocCloseButton = document.getElementById('toc-close');
+            const tocModal = document.getElementById('toc-modal');
+            const tocItems = document.querySelectorAll('.toc-item');
             const fontButton = document.getElementById('font-button');
+            const settingsModal = document.getElementById('settings-modal');
+            const settingsCloseButton = document.getElementById('settings-close');
+            const fontDecreaseButton = document.getElementById('font-decrease');
+            const fontIncreaseButton = document.getElementById('font-increase');
+            const fontSizeValue = document.getElementById('font-size-value');
+            const lightThemeBtn = document.getElementById('light-theme-btn');
+            const darkThemeBtn = document.getElementById('dark-theme-btn');
+            const sepiaThemeBtn = document.getElementById('sepia-theme-btn');
             const layoutToggle = document.getElementById('layout-toggle');
             const fullscreenButton = document.getElementById('fullscreen-button');
-            const tocModal = document.getElementById('toc-modal');
-            const tocClose = document.getElementById('toc-close');
-            const tocItems = document.querySelectorAll('.toc-item');
             const currentPageElement = document.getElementById('current-page');
             const nextPageElement = document.getElementById('next-page');
-            const prevPageArea = document.getElementById('prev-page-area');
-            const nextPageArea = document.getElementById('next-page-area');
             const prevPageBtn = document.getElementById('prev-page-btn');
             const nextPageBtn = document.getElementById('next-page-btn');
             const currentPageNum = document.getElementById('current-page-num');
@@ -279,14 +285,8 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
             const progressFill = document.getElementById('progress-fill');
             const progressText = document.getElementById('progress-text');
             const saveBtn = document.getElementById('save-btn');
-            const settingsModal = document.getElementById('settings-modal');
-            const settingsClose = document.getElementById('settings-close');
-            const fontDecrease = document.getElementById('font-decrease');
-            const fontIncrease = document.getElementById('font-increase');
-            const fontSizeValue = document.getElementById('font-size-value');
-            const lightThemeBtn = document.getElementById('light-theme-btn');
-            const darkThemeBtn = document.getElementById('dark-theme-btn');
-            const sepiaThemeBtn = document.getElementById('sepia-theme-btn');
+            const prevPageArea = document.getElementById('prev-page-area');
+            const nextPageArea = document.getElementById('next-page-area');
             
             // Инициализация переменных
             let virtualPages = [];
@@ -308,7 +308,7 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                 tocModal.classList.toggle('open');
             });
             
-            tocClose.addEventListener('click', function() {
+            tocCloseButton.addEventListener('click', function() {
                 tocModal.classList.remove('open');
             });
             
@@ -316,7 +316,7 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                 settingsModal.style.display = settingsModal.style.display === 'block' ? 'none' : 'block';
             });
             
-            settingsClose.addEventListener('click', function() {
+            settingsCloseButton.addEventListener('click', function() {
                 settingsModal.style.display = 'none';
             });
             
@@ -328,14 +328,14 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                 toggleFullscreen();
             });
             
-            fontDecrease.addEventListener('click', function() {
+            fontDecreaseButton.addEventListener('click', function() {
                 if (fontSize > 8) {
                     fontSize -= 2;
                     updateFontSize();
                 }
             });
             
-            fontIncrease.addEventListener('click', function() {
+            fontIncreaseButton.addEventListener('click', function() {
                 if (fontSize < 32) {
                     fontSize += 2;
                     updateFontSize();
@@ -559,21 +559,30 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                 // Обновляем текущую страницу
                 currentPageIndex = pageIndex;
                 
-                // Находим элемент главы
-                const chapterId = 'chapter_' + pageIndex;
-                const chapterElement = document.getElementById(chapterId);
-                
-                if (chapterElement) {
-                    // Прокручиваем к элементу
-                    chapterElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Если pageIndex меньше или равно количеству глав, переходим к главе
+                if (pageIndex <= <?php echo $totalChapters; ?>) {
+                    const chapterId = 'chapter_' + pageIndex;
+                    const chapterElement = document.getElementById(chapterId);
                     
-                    // Обновляем активную главу в оглавлении
-                    tocItems.forEach(item => {
-                        item.classList.remove('active');
-                        if (parseInt(item.getAttribute('data-page')) === pageIndex) {
-                            item.classList.add('active');
-                        }
-                    });
+                    if (chapterElement) {
+                        // Прокручиваем к элементу
+                        chapterElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        
+                        // Обновляем активную главу в оглавлении
+                        tocItems.forEach(item => {
+                            item.classList.remove('active');
+                            if (parseInt(item.getAttribute('data-page')) === pageIndex) {
+                                item.classList.add('active');
+                            }
+                        });
+                    }
+                } else if (virtualPages.length > 0) {
+                    // Иначе переходим к виртуальной странице
+                    const virtualPageIndex = pageIndex - <?php echo $totalChapters; ?> - 1;
+                    if (virtualPageIndex >= 0 && virtualPageIndex < virtualPages.length) {
+                        const firstElement = virtualPages[virtualPageIndex][0];
+                        firstElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
                 }
                 
                 // Обновляем URL без перезагрузки страницы
@@ -660,6 +669,62 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
             const chapterId = urlParams.get('chapter');
             if (chapterId) {
                 goToChapter('chapter_' + chapterId);
+            }
+            
+            // Функция для разбиения книги на виртуальные страницы
+            function initializeVirtualPages() {
+                // Получаем все элементы содержимого книги
+                const contentElements = Array.from(currentPageElement.querySelectorAll('p, h1, h2, h3, h4, h5, h6, div, img'));
+                
+                // Определяем высоту видимой области
+                const viewportHeight = window.innerHeight - 120; // Вычитаем высоту панелей
+                
+                // Создаем виртуальные страницы
+                let currentPage = [];
+                let currentHeight = 0;
+                virtualPages = [];
+                
+                contentElements.forEach(element => {
+                    const elementHeight = element.offsetHeight;
+                    
+                    // Если элемент не помещается на текущую страницу, создаем новую
+                    if (currentHeight + elementHeight > viewportHeight && currentPage.length > 0) {
+                        virtualPages.push(currentPage);
+                        currentPage = [element];
+                        currentHeight = elementHeight;
+                    } else {
+                        currentPage.push(element);
+                        currentHeight += elementHeight;
+                    }
+                });
+                
+                // Добавляем последнюю страницу
+                if (currentPage.length > 0) {
+                    virtualPages.push(currentPage);
+                }
+                
+                // Обновляем общее количество страниц
+                // Используем максимальное значение между количеством глав и виртуальных страниц
+                totalPagesCount = Math.max(<?php echo $totalChapters; ?>, virtualPages.length);
+                
+                // Определяем текущую страницу на основе прокрутки
+                const scrollPosition = window.scrollY || document.documentElement.scrollTop;
+                
+                // Находим текущую виртуальную страницу на основе прокрутки
+                let accumulatedHeight = 0;
+                for (let i = 0; i < virtualPages.length; i++) {
+                    const pageHeight = virtualPages[i].reduce((sum, element) => sum + element.offsetHeight, 0);
+                    
+                    if (accumulatedHeight + pageHeight > scrollPosition) {
+                        currentPageIndex = i + 1;
+                        break;
+                    }
+                    
+                    accumulatedHeight += pageHeight;
+                }
+                
+                // Обновляем информацию о страницах
+                updatePageInfo();
             }
         });
     </script>
