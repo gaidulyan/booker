@@ -530,8 +530,8 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                     body: JSON.stringify({
                         user_id: userId,
                         book_id: bookId,
-                        page: currentVirtualPage,
-                        scroll_position: 0,
+                        page: <?php echo $currentPage; ?>,
+                        scroll_position: scrollPosition,
                         last_page_text: ''
                     })
                 })
@@ -547,22 +547,25 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
             }
             
             function updateProgressIndicator() {
-                const percentage = Math.round((currentVirtualPage / totalPagesCount) * 100);
-                progressFill.style.width = `${percentage}%`;
-                progressText.textContent = `${percentage}%`;
+                // Получаем текущую позицию прокрутки
+                const scrollPosition = window.scrollY || document.documentElement.scrollTop;
+                
+                // Получаем текущий процент прокрутки
+                const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+                const scrollPercentage = scrollHeight > 0 ? (scrollPosition / scrollHeight) * 100 : 0;
+                
+                // Обновляем индикатор прогресса
+                progressFill.style.width = `${scrollPercentage}%`;
+                progressText.textContent = `${Math.round(scrollPercentage)}%`;
             }
             
             function updatePageInfo() {
-                currentPageNum.textContent = currentVirtualPage;
-                totalPagesElement.textContent = totalPagesCount;
+                // Обновляем информацию о страницах
+                currentPageNum.textContent = <?php echo $currentPage; ?>;
+                totalPagesElement.textContent = <?php echo $totalChapters; ?>;
             }
             
             // Обработчики событий
-            window.addEventListener('resize', function() {
-                // Пересчитываем страницы при изменении размера окна
-                initializePages();
-            });
-            
             backButton.addEventListener('click', function() {
                 saveProgress(false);
                 window.location.href = 'index.php';
@@ -615,9 +618,6 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                         isFullscreen = true;
                         document.body.classList.add('fullscreen-mode');
                         fullscreenButton.innerHTML = '<i class="fas fa-compress"></i>';
-                        
-                        // Пересчитываем страницы в полноэкранном режиме
-                        setTimeout(initializePages, 300);
                     }).catch(err => {
                         console.error(`Ошибка: ${err.message}`);
                     });
@@ -627,9 +627,6 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                             isFullscreen = false;
                             document.body.classList.remove('fullscreen-mode');
                             fullscreenButton.innerHTML = '<i class="fas fa-expand"></i>';
-                            
-                            // Пересчитываем страницы после выхода из полноэкранного режима
-                            setTimeout(initializePages, 300);
                         });
                     }
                 }
@@ -640,15 +637,45 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
             });
             
             prevPageBtn.addEventListener('click', function() {
-                if (currentVirtualPage > 1) {
-                    goToPage(currentVirtualPage - 1);
+                if (<?php echo $currentPage; ?> > 1) {
+                    goToPage(<?php echo $currentPage; ?> - 1);
                 }
             });
             
             nextPageBtn.addEventListener('click', function() {
-                if (currentVirtualPage < totalPagesCount) {
-                    goToPage(currentVirtualPage + 1);
+                if (<?php echo $currentPage; ?> < <?php echo $totalChapters; ?>) {
+                    goToPage(<?php echo $currentPage; ?> + 1);
                 }
+            });
+            
+            // Обработчики для областей перемотки страниц
+            prevPageArea.addEventListener('click', function() {
+                if (<?php echo $currentPage; ?> > 1) {
+                    goToPage(<?php echo $currentPage; ?> - 1);
+                }
+            });
+            
+            nextPageArea.addEventListener('click', function() {
+                if (<?php echo $currentPage; ?> < <?php echo $totalChapters; ?>) {
+                    goToPage(<?php echo $currentPage; ?> + 1);
+                }
+            });
+            
+            // Показываем индикаторы перемотки при наведении
+            prevPageArea.addEventListener('mouseenter', function() {
+                this.querySelector('.page-turn-indicator').style.opacity = '1';
+            });
+            
+            prevPageArea.addEventListener('mouseleave', function() {
+                this.querySelector('.page-turn-indicator').style.opacity = '0';
+            });
+            
+            nextPageArea.addEventListener('mouseenter', function() {
+                this.querySelector('.page-turn-indicator').style.opacity = '1';
+            });
+            
+            nextPageArea.addEventListener('mouseleave', function() {
+                this.querySelector('.page-turn-indicator').style.opacity = '0';
             });
             
             saveBtn.addEventListener('click', function() {
@@ -670,7 +697,7 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                         goToChapter(elementId);
                     }
                     tocModal.classList.remove('open');
-                });
+                }); 
             });
             
             // Закрытие модального окна при клике вне его
@@ -697,9 +724,6 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                                 isFullscreen = false;
                                 document.body.classList.remove('fullscreen-mode');
                                 fullscreenButton.innerHTML = '<i class="fas fa-expand"></i>';
-                                
-                                // Пересчитываем страницы после выхода из полноэкранного режима
-                                setTimeout(initializePages, 300);
                             });
                         }
                     }
@@ -712,12 +736,12 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                         settingsModal.style.display = 'none';
                     }
                 } else if (event.key === 'ArrowLeft') {
-                    if (currentVirtualPage > 1) {
-                        goToPage(currentVirtualPage - 1);
+                    if (<?php echo $currentPage; ?> > 1) {
+                        goToPage(<?php echo $currentPage; ?> - 1);
                     }
                 } else if (event.key === 'ArrowRight') {
-                    if (currentVirtualPage < totalPagesCount) {
-                        goToPage(currentVirtualPage + 1);
+                    if (<?php echo $currentPage; ?> < <?php echo $totalChapters; ?>) {
+                        goToPage(<?php echo $currentPage; ?> + 1);
                     }
                 } else if (event.key === 'f' && event.ctrlKey) {
                     // Ctrl+F для полноэкранного режима
@@ -732,6 +756,28 @@ if (!empty($chapters) && isset($chapters[$currentPage - 1])) {
                     event.preventDefault();
                     tocButton.click();
                 }
+            });
+            
+            // Автоматическое сохранение прогресса при загрузке страницы
+            window.addEventListener('load', function() {
+                // Восстанавливаем позицию прокрутки
+                window.scrollTo(0, <?php echo $progress['scroll_position']; ?>);
+                
+                // Восстанавливаем режим отображения
+                if (localStorage.getItem('reader_two_page_mode') === '1') {
+                    toggleTwoPageMode();
+                }
+                
+                // Обновляем информацию о страницах
+                updatePageInfo();
+                
+                // Обновляем индикатор прогресса
+                updateProgressIndicator();
+                
+                // Автоматически сохраняем прогресс
+                setTimeout(function() {
+                    saveProgress(false);
+                }, 2000);
             });
         });
     </script>

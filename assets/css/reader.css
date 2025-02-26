@@ -278,13 +278,14 @@ body {
 
 /* Двухстраничный режим */
 .two-page-mode .book-content {
+    display: flex;
     justify-content: center;
-    gap: 40px;
+    gap: 20px;
 }
 
 .two-page-mode .page {
-    max-width: calc(50% - 60px);
-    margin: 0;
+    flex: 1;
+    max-width: calc(50% - 10px);
 }
 
 .two-page-mode .page:nth-child(2) {
@@ -369,11 +370,13 @@ body.theme-dark .font-size-btn {
 .fullscreen-mode .reader-header,
 .fullscreen-mode .reader-footer {
     opacity: 0;
+    pointer-events: none;
 }
 
 .fullscreen-mode:hover .reader-header,
 .fullscreen-mode:hover .reader-footer {
     opacity: 1;
+    pointer-events: auto;
 }
 
 /* Оглавление */
@@ -472,4 +475,58 @@ body.theme-dark .font-size-btn {
     .toc-modal {
         width: 80%;
     }
+}
+
+/* Стили для областей перемотки страниц */
+.page-turn-area {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 15%;
+    z-index: 50;
+    cursor: pointer;
+}
+
+.page-turn-area.left {
+    left: 0;
+}
+
+.page-turn-area.right {
+    right: 0;
+}
+
+.page-turn-indicator {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.page-turn-area.left .page-turn-indicator {
+    left: 20px;
+}
+
+.page-turn-area.right .page-turn-indicator {
+    right: 20px;
+}
+
+/* Стили для двухстраничного режима */
+.two-page-mode .book-content {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.two-page-mode .page {
+    flex: 1;
+    max-width: calc(50% - 10px);
 } 
